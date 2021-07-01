@@ -48,7 +48,8 @@ valid.}
 \item{end}{[\code{integerish(1)}]\cr the date until which the data are valid.}
 
 \item{schema}{[\code{list(1)}]\cr the schema description of the table to read
-in (must have been placed in the global environment before calling it here.}
+in (must have been placed in the global environment before calling it
+here).}
 
 \item{archive}{[\code{character(1)}]\cr the original file from which the
 boundaries emerge.}
@@ -88,24 +89,23 @@ This function registers a new areal data table into the geospatial database.
 }
 \details{
 When processing areal data tables, carry out the following steps:
-  \enumerate{ \item Determine the \code{nation}, administrative \code{level},
-  a \code{subset} (if applicable) and the \code{dataseries} of the areal data
-  and of the geometry, and provide them as arguments to this function. \item
-  Provide a \code{begin} and \code{end} date for the areal data. \item Run
-  the function. \item (Re)Save the table with the following properties:
-  \itemize{\item Format: csv \item Encoding: UTF-8 \item File name: What is
-  provided as message by this function \item make sure that the file is not
-  modified or reshaped. This will happen during data normalisation via the
-  schema description, which expects the original table.} \item Confirm that
-  you have saved the file.}
+  \enumerate{ \item Determine the \code{nation}, a \code{subset} (if
+  applicable), the administrative \code{level} and the \code{dataseries} of
+  the areal data and of the geometry, and provide them as arguments to this
+  function. \item Provide a \code{begin} and \code{end} date for the areal
+  data. \item Run the function. \item (Re)Save the table with the following
+  properties: \itemize{\item Format: csv \item Encoding: UTF-8 \item File
+  name: What is provided as message by this function \item make sure that the
+  file is not modified or reshaped. This will happen during data
+  normalisation via the schema description, which expects the original
+  table.} \item Confirm that you have saved the file.}
 
   Every areal data dataseries (\code{dSeries}) may come as a slight
   permutation of a particular table arrangement. The function
   \code{\link{normTable}} expects internally a schema description (a list
   that describes the position of the data components) for each data table,
-  which is saved as \code{paste0("meta_", dSeries, TAB_NUMBER)}. A template
-  thereof, and documentation on how to set them up, can be found in
-  \code{tabshiftr::\link{makeSchema}} with \code{arealDB}.
+  which is saved as \code{paste0("meta_", dSeries, TAB_NUMBER)}. See package
+  \code{tabshiftr}.
 }
 \examples{
 # build the example database
@@ -113,24 +113,19 @@ makeExampleDB(until = "regGeometry")
 
 # the schema description for this table
 library(tabshiftr)
-schema_madeUp <- makeSchema(
-  list(header = list(row = 1),
-       variables = list(
-         al1 =
-           list(type = "id", col = 1),
-         year =
-           list(type = "id", col = 2),
-         commodities =
-           list(type = "id", col = 3),
-         harvested =
-           list(type = "measured", unit = "ha",
-                factor = 1, col = 4),
-         production =
-           list(type = "measured", unit = "t",
-                factor = 1, col = 5))))
+library(magrittr)
 
-regTable(nation = "estonia",
-         subset = "soyMaize",
+schema_madeUp <-
+  setIDVar(name = "al1", columns = 1) \%>\%
+  setIDVar(name = "year", columns = 2) \%>\%
+  setIDVar(name = "commodities", columns = 3) \%>\%
+  setObsVar(name = "harvested",
+            factor = 1, columns = 4) \%>\%
+  setObsVar(name = "production",
+            factor = 1, columns = 5)
+
+regTable(nation = "Estonia",
+         subset = "barleyMaize",
          dSeries = "madeUp",
          gSeries = "gadm",
          level = 1,

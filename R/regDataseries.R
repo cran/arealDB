@@ -9,11 +9,13 @@
 #'   where the dataseries or additional information can be found.
 #' @param licence_link [\code{character(1)}]\cr link to the licence or the
 #'   webpage from which the licence was copied.
-#' @param licence_path [\code{character(1)}]\cr path to the local file in with
+#' @param licence_path [\code{character(1)}]\cr path to the local file in which
 #'   the licence text is stored.
 #' @param notes [\code{character(1)}]\cr optional notes.
 #' @param update [\code{logical(1)}]\cr whether or not the file
 #'   'inv_dataseries.csv' should be updated.
+#' @param overwrite [\code{logical(1)}]\cr whether or not the dataseries to
+#'   register shall overwrite a potentially already existing older version.
 #' @return Returns a tibble of the new entry that is appended to
 #'   'inv_dataseries.csv' in case \code{update = TRUE}.
 #' @examples
@@ -31,8 +33,9 @@
 #' @importFrom tibble tibble
 #' @export
 
-regDataseries <- function(name = NULL, description = NULL, homepage = NULL, licence_link = NULL,
-                          licence_path = NULL, notes = NULL, update = FALSE){
+regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
+                          licence_link = NULL, licence_path = NULL, notes = NULL,
+                          update = FALSE, overwrite = FALSE){
 
   # get tables
   inv_dataseries <- read_csv(paste0(getOption(x = "adb_path"), "/inv_dataseries.csv"), col_types = "icccccc")
@@ -50,6 +53,7 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL, lice
   assertCharacter(x = licence_path, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = notes, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertLogical(x = update, len = 1)
+  assertLogical(x = overwrite, len = 1)
 
   # ask for missing and required arguments
   if(is.null(name)){
@@ -63,8 +67,10 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL, lice
       theName = NA_character_
     }
   } else{
-    if(name %in% inv_dataseries$name & !update){
-      stop("! the dataseries '", name, "' has been registered already !")
+    if(name %in% inv_dataseries$name & !overwrite){
+      message("! the dataseries '", name, "' has already been registered !")
+      temp <- inv_dataseries[which(inv_dataseries$name %in% name), ]
+      return(temp)
     }
     theName <- name
   }
@@ -130,14 +136,11 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL, lice
   }
 
   # construct new documentation
-  if(update){
+  newDID <- ifelse(length(inv_dataseries$datID)==0, 1, as.integer(max(inv_dataseries$datID)+1))
+  if(overwrite){
     if(theName %in% inv_dataseries$name){
       newDID <- inv_dataseries$datID[which(inv_dataseries$name %in% theName)]
-    } else {
-      newDID <- ifelse(length(inv_dataseries$datID)==0, 1, as.integer(max(inv_dataseries$datID)+1))
     }
-  } else {
-    newDID <- ifelse(length(inv_dataseries$datID)==0, 1, as.integer(max(inv_dataseries$datID)+1))
   }
   temp <- tibble(datID = as.integer(newDID),
                  name = theName,
@@ -148,7 +151,7 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL, lice
                  notes = notes)
   if(update){
     # in case the user wants to update, attach the new information to the table inv_dataseries.csv
-    updateTable(index = temp, name = "inv_dataseries")
+    updateTable(index = temp, name = "inv_dataseries", matchCols = c("name"))
   }
 
   return(temp)

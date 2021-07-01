@@ -13,7 +13,8 @@
 #' @param outType [\code{character(1)}]\cr the output file-type, see
 #'   \code{\link{st_drivers}} for a list. If a file-type supports layers, they
 #'   are stored in the same file, otherwise the different layers are provided
-#'   separately.
+#'   separately. For an R-based workflow, \code{"rds"} could be an efficient
+#'   option.
 #' @param pattern [\code{character(1)}]\cr an optional regular expression. Only
 #'   dataset names which match the regular expression will be returned.
 #' @param update [\code{logical(1)}]\cr whether or not the physical files should
@@ -65,11 +66,13 @@
 #' normGeometry(nation = "estonia", update = TRUE)
 #'
 #' # ... and check the result
-#' output <- st_read(paste0(tempdir(), "/newDB/adb_geometries/stage3/estonia.gpkg"))
+#' st_layers(paste0(tempdir(), "/newDB/adb_geometries/stage3/Estonia.gpkg"))
+#' output <- st_read(paste0(tempdir(), "/newDB/adb_geometries/stage3/Estonia.gpkg"))
 #' @importFrom checkmate assertFileExists assertIntegerish assertLogical
 #'   assertCharacter assertChoice testFileExists
 #' @importFrom dplyr filter distinct select mutate rowwise filter_at vars
 #'   all_vars pull group_by arrange summarise mutate_if rename n if_else ungroup
+#'   across
 #' @importFrom rlang sym exprs
 #' @importFrom readr read_csv
 #' @importFrom sf st_layers read_sf st_write st_join st_buffer st_equals st_sf
@@ -106,11 +109,10 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
   # check validity of arguments
   assertIntegerish(x = thresh, any.missing = FALSE)
   assertLogical(x = update, len = 1)
-  assertNames(x = outType, subset.of = tolower(st_drivers()$name))
+  assertNames(x = outType, subset.of = c(tolower(st_drivers()$name), "rds"))
 
   outLut <- NULL
   for(i in seq_along(input)){
-    # start_overall <- Sys.time()
 
     thisInput <- input[i]
 
@@ -147,15 +149,10 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
 
     # read the object
     message("\n--> reading new geometries from '", file_name, "' ...")
-    # start_time <- Sys.time()
     newLayers <- st_layers(dsn = thisInput)
     newGeom <- read_sf(dsn = thisInput,
                        layer = theLayer,
                        stringsAsFactors = FALSE)
-
-    # timings
-    # end_time <- Sys.time()
-    # timings_overall <- tibble(activity = "read new geom", duration = end_time - start_time)
 
     # determine nation value
     if(fields[1] == ""){
@@ -167,11 +164,19 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
         as.character()
       assertCharacter(x = theNations, min.len = 1, any.missing = FALSE)
       nations <- translateTerms(terms = theNations,
-                                index = "tt_territories",
+                                index = "tt_nations",
                                 source = list("geoID" = newGID),
-                                verbose = verbose) %>%
-        mutate(target = if_else(target == "ignore", NA_character_, target)) %>%
-        pull(target)
+                                verbose = verbose)%>%
+        mutate(valid = if_else(target == "ignore", FALSE, if_else(target %in% countries$unit, TRUE, FALSE))) %>%
+        select(!!nationCol := origin, target, valid)
+      theNations <- nations[[nationCol]][nations$valid]
+
+      newGeom <- newGeom %>%
+        left_join(nations) %>%
+        filter(valid) %>%
+        mutate(!!nationCol := target) %>%
+        select(-valid, -target)
+      nations <- nations$target[nations$valid]
 
     } else{
       severalNations <- FALSE
@@ -184,10 +189,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
       theNations <- nations
     }
 
-    # only process existing nations
-    theNations <- theNations[!is.na(nations)]
-    nations <- nations[!is.na(nations)]
-
     # potentially subset nation values
     if(length(subsets) > 0){
       assertChoice(x = names(subsets), choices = c("nation", "un_member", "continent", "region", "subregion"))
@@ -195,8 +196,10 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
       # unify also the nations with which to subset
       if(any(names(subsets) == "nation")){
         toUnify <- eval(subsets[[which(names(subsets) == "nation")]])
+        nationNames <- countries$nation[!is.na(countries$nation)]
         unified <- translateTerms(terms = toUnify,
                                   index = "tt_territories",
+                                  fuzzy_terms = nationNames,
                                   source = list("geoID" = newGID),
                                   verbose = verbose) %>%
           pull(target)
@@ -223,27 +226,26 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
 
       # then we loop through all nations
       for(j in seq_along(nations)){
-        start_nation <- Sys.time()
 
         tempNation <- nations[j]
+        # outNation <- theNations[j]
         nationID <- as.integer(countries$ahID[countries$unit == tempNation])
         message(paste0(" -> processing '", tempNation, "' ..."))
 
         # create a geom specifically for the recent nation
         if(severalNations){
           sourceGeom <- newGeom %>%
-            filter_at(vars(nationCol), all_vars(. %in% theNations[j])) %>%
+            filter_at(vars(all_of(nationCol)), all_vars(. %in% tempNation)) %>%
             select(all_of(unitCols))
           assertChoice(x = natCol, choices = names(sourceGeom), .var.name = "names(nation_column)")
         } else{
           sourceGeom <- newGeom %>%
-            select(unitCols)
+            select(all_of(unitCols))
         }
 
         # dissolve ----
         # in case the object consists of several POLYGONs per unique name, dissolve
         # them into a single MULTIPOLYGON
-        # start_time <- Sys.time()
         if(unique(st_geometry_type(sourceGeom)) == "POLYGON"){
           uniqueUnits <- sourceGeom %>%
             as_tibble() %>%
@@ -255,7 +257,7 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
               message("    Dissolving multiple polygons into a single multipolygon")
 
               sourceGeom <- sourceGeom %>%
-                group_by(.dots = unitCols) %>%
+                group_by(across(all_of(unitCols))) %>%
                 summarise() %>%
                 ungroup()
             } else {
@@ -266,10 +268,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
             message("  ! The geometry contains only POLYGON features but no unique names to summarise them.")
           }
         }
-
-        # timings
-        # dissolve_time <- Sys.time()
-        # timings <- tibble(activity = "dissolve new geom", duration = dissolve_time - start_time)
 
         # file exists? ----
         # determine whether a geometry with the nation as name already exists and
@@ -286,7 +284,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
         if(fileExists){
 
           # read target geoms ----
-          # start_time <- Sys.time()
           message("    Reading target geometries")
           targetGeom <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
                                 layer = sort(targetLayers$name)[theLevel],
@@ -299,21 +296,12 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
             parentGeom <- NULL
           }
 
-          # timings
-          # read_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "read target geom", duration = read_time - start_time))
-
           # reproject new geom ----
           # start_time <- Sys.time()
           if(st_crs(sourceGeom) != st_crs(targetGeom)){
             message("    Reprojecting new geometries")
             sourceGeom <- st_transform(x = sourceGeom, crs = st_crs(targetGeom))
           }
-
-          # timings
-          # reproj_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "reproject new geom", duration = reproj_time - start_time))
-
           # test whether/which of the new features are already (spatially) in the target
           # geom and stop if all of them are there already.
           message("    Checking for exact spatial matches")
@@ -323,10 +311,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
             message("  ! --> all features of the new geometry are already part of the target geometry !")
             next
           }
-
-          # timings
-          # end_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "check equal new-target", duration = end_time - start_time))
 
           # join geoms ----
           # first make unique FIDs for each feature
@@ -339,7 +323,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
                    targetFID = seq_along(geom))
 
           message("    Joining target and source geometries")
-          # start_time <- Sys.time()
 
           # spatial join with the parent geom (smallest geoID), to determine
           # whether all are within a parent
@@ -423,8 +406,9 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
 
           validUnits <- sourceOverlap %>%
             filter(valid) %>%
-            mutate(geoID = newGID) %>%
-            select(-sourceFID, -!!unitCols, -valid) %>%
+            mutate(geoID = newGID,
+                   name = !!sym(unitCols[length(unitCols)])) %>%
+            select(-sourceFID, -valid, -!!unitCols) %>%
             st_sf()
 
           # get geoms that are invalid because their overlap is smaller than
@@ -457,13 +441,8 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
                    name = as.character(name),
                    level = as.integer(theLevel),
                    ahID = as.integer(ahID),
-                   geoID = as.integer(geoID),
-                   nation = tempNation) %>%
+                   geoID = as.integer(geoID)) %>%
             mutate_at(vars(starts_with("al")), as.integer)
-
-          # timings
-          # end_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "filter valid features", duration = end_time - start_time))
 
           # unique features ----
           # this is a test that should ideally never be true, it would mean that there
@@ -477,7 +456,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
           # make ID for already existing features ----
           # determine how many units there are per parent unit
           message("    Reconstructing IDs")
-          # start_time <- Sys.time()
           if(theLevel > 1){
             prevUnits <- targetGeom %>%
               as_tibble() %>%
@@ -538,7 +516,7 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
 
               matchGeoms <- invalidUnits %>%
                 select(unitCols, geom) %>%
-                mutate_if(is.character, tolower) %>%
+                # mutate_if(is.character, tolower) %>%
                 st_sf()
 
               if(dim(matchGeoms)[1] != 0){
@@ -566,12 +544,9 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
 
             }
           }
-          prevIDs <- prevIDs %>%
-            mutate_if(is.character, tolower)
+          # prevIDs <- prevIDs %>%
+            # mutate_if(is.character, tolower)
 
-          # timings
-          # id_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "reconstruct IDs", duration = id_time - start_time))
 
           # if prevUnits is NA, fill it with 0
           if(dim(prevUnits)[1] == 1 & all(is.na(prevUnits$prevUnits))){
@@ -580,7 +555,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
           }
 
           # make ID for new features ----
-          # start_time <- Sys.time()
           if(theLevel == 1){
             groupLevel <- 2
           } else {
@@ -590,12 +564,12 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
             newUnits <- invalidUnits %>%
               as_tibble() %>%
               select(-ahID, -geoID, -level, -name, -starts_with("al")) %>%
-              mutate_if(is.character, tolower) %>%
+              # mutate_if(is.character, tolower) %>%
               left_join(prevIDs) %>%
               mutate(al1_id = {if (any(is.na(al1_id))) nationID else al1_id}) %>%
               left_join(prevUnits) %>%
               filter(!duplicated(.)) %>%
-              group_by(.dots = paste0("al", groupLevel-1, "_id")) %>%
+              group_by(across(all_of(paste0("al", groupLevel-1, "_id")))) %>%
               mutate(nation = tempNation,
                      name = {if (n() > 0) !!sym(unitCols[length(unitCols)]) else ""},
                      level = theLevel,
@@ -642,10 +616,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
             rbind(outGeom) %>%
             arrange(ahID)
 
-          # timings
-          # id_time <- Sys.time()
-          # timings <- bind_rows(timi ngs, tibble(activity = "make missing IDs", duration = id_time - start_time))
-
         } else {
 
           # check whether a gadm geometry has been registered previously
@@ -668,7 +638,7 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
                 as_tibble() %>%
                 filter(geoID %in% gadmIDs) %>%
                 rename(NAME_0 = nation) %>%
-                select(-geom)
+                select(-geom, -name)
             } else {
               parentIDs <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
                                    layer = sort(targetLayers$name)[theLevel-1],
@@ -686,40 +656,45 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
           }
 
           # for joining the geom(s) to modified objects
-          matchGeom <- sourceGeom %>%
-            select(!!unitCols) %>%
-            mutate_if(is.character, tolower)
+          # matchGeom <- sourceGeom %>%
+          #   select(!!unitCols) # %>%
+          # mutate(NAME_0 = tolower(NAME_0)) %>%
+          # mutate_if(is.character, tolower)
 
           # join the object with the parent ID to derive IDs of this level that are
           # actual children of the correct parent
-          suppressMessages(joinedGeom <- sourceGeom %>%
-                             as_tibble() %>%
-                             select(-geom)  %>%
-                             mutate_if(is.character, tolower) %>%
-                             left_join(parentIDs) %>%
-                             select(!!unitCols, starts_with("al")) %>%
-                             left_join(matchGeom) %>%
-                             st_sf())
+          # suppressMessages(joinedGeom <- sourceGeom %>%
+          #                    # as_tibble() %>%
+          #                    # select(-geom)  %>%
+          #                    # mutate_if(is.character, tolower) %>%
+          #                    # mutate(NAME_0 = tolower(NAME_0)) %>%
+          #                    left_join(parentIDs)# %>%
+                             # select(-level, -geoID)# %>%
+                             # left_join(matchGeom) %>%
+                             # st_sf()
+                             # )
 
           xyz <- unitCols[!seq_along(unitCols) %in% c(1, length(unitCols))]
 
           # derive required information
-          outGeom <- joinedGeom %>%
-            group_by(!!as.symbol(unitCols[length(unitCols)-1])) %>%
-            mutate(level = theLevel,
-                   !!paste0("al", theLevel, "_id") := {if(theLevel == 1) nationID else seq_along(NAME_0)},
-                   geoID = newGID
-            ) %>%
-            mutate(ahID = paste0({if("al1_id" %in% names(.)) formatC(al1_id, width = 3, flag = 0) else ""},
-                                 {if("al2_id" %in% names(.)) formatC(al2_id, width = 3, flag = 0) else ""},
-                                 {if("al3_id" %in% names(.)) formatC(al3_id, width = 3, flag = 0) else ""},
-                                 {if("al4_id" %in% names(.)) formatC(al4_id, width = 3, flag = 0) else ""},
-                                 {if("al5_id" %in% names(.)) formatC(al5_id, width = 3, flag = 0) else ""},
-                                 {if("al6_id" %in% names(.)) formatC(al6_id, width = 3, flag = 0) else ""})
-            ) %>%
-            ungroup() %>%
-            select(nation = NAME_0, name = !!unitCols[length(unitCols)], level, ahID, geoID, everything(), -xyz) %>%
-            mutate(name = tolower(name))
+          outGeom <- suppressMessages(
+            sourceGeom %>%
+              left_join(parentIDs) %>%
+              group_by(!!as.symbol(unitCols[length(unitCols)-1])) %>%
+              mutate(level = theLevel,
+                     !!paste0("al", theLevel, "_id") := {if(theLevel == 1) nationID else seq_along(NAME_0)},
+                     geoID = newGID
+              ) %>%
+              mutate(ahID = paste0({if("al1_id" %in% names(.)) formatC(al1_id, width = 3, flag = 0) else ""},
+                                   {if("al2_id" %in% names(.)) formatC(al2_id, width = 3, flag = 0) else ""},
+                                   {if("al3_id" %in% names(.)) formatC(al3_id, width = 3, flag = 0) else ""},
+                                   {if("al4_id" %in% names(.)) formatC(al4_id, width = 3, flag = 0) else ""},
+                                   {if("al5_id" %in% names(.)) formatC(al5_id, width = 3, flag = 0) else ""},
+                                   {if("al6_id" %in% names(.)) formatC(al6_id, width = 3, flag = 0) else ""})
+              ) %>%
+              ungroup() %>%
+              select(nation = NAME_0, name = !!unitCols[length(unitCols)], level, ahID, geoID, everything(), -all_of(xyz)) %>%
+              mutate(name = name))
 
           if(theLevel == 1){
             unitCols <- orig_units
@@ -727,22 +702,20 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
         }
 
         if(update){
-          # start_time <- Sys.time()
           # in case the user wants to update, output the simple feature
-          st_write(obj = outGeom,
-                   dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, paste0(".", outType)),
-                   layer = paste0("level_", theLevel),
-                   delete_layer = TRUE,
-                   append = TRUE,
-                   quiet = TRUE)
+          if(outType != "rds"){
+            st_write(obj = outGeom,
+                     dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".", outType),
+                     layer = paste0("level_", theLevel),
+                     delete_layer = TRUE,
+                     append = TRUE,
+                     quiet = TRUE)
+          } else {
+            saveRDS(object = outGeom, file = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".rds"))
+          }
 
-          # save_time <- Sys.time()
-          # timings <- bind_rows(timings, tibble(activity = "save new geom", duration = save_time - start_time))
         }
 
-        # end_nation <- Sys.time()
-        # timings <- bind_rows(timings, tibble(activity = "overall time", duration = end_nation - start_nation))
-        # write_csv(timings, paste0(intPaths, "/adb_geometries/stage2/processed/", theLayer, "_", tempNation, "_timings.csv"))
       }
     }
 
@@ -754,10 +727,6 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
     }
 
     outLut <- bind_rows(outLut, lut)
-
-    # end_overall <- Sys.time()
-    # timings_overall <- bind_rows(timings_overall, tibble(activity = "overall time", duration = end_overall - start_overall))
-    # write_csv(timings_overall, paste0(intPaths, "/adb_geometries/stage2/processed/", theLayer, "_timings.csv"))
 
   }
 

@@ -1,14 +1,18 @@
 #' Update a table
 #'
-#' Update any inventory, index or translation table of a geospatial
-#' database.
+#' Update any inventory, index or translation table of an areal database.
 #' @param index [\code{tibble(1)}]\cr the table to use as update.
 #' @param name [\code{character(1)}]\cr name of the table that shall be updated.
+#' @param matchCols [\code{character(.)}]\cr the columns in the old file by
+#'   which to match.
+#' @param backup [logical(1)]\cr whether or not to store the old table in the
+#'   \code{log} directory.
 #' @importFrom checkmate assertTibble assertCharacter
 #' @importFrom readr write_csv
-#' @importFrom dplyr union arrange row_number
+#' @importFrom dplyr union arrange row_number across
+#' @importFrom tidyselect all_of
 
-updateTable <- function(index = NULL, name = NULL){
+updateTable <- function(index = NULL, name = NULL, matchCols = NULL, backup = TRUE){
 
   # set internal paths
   intPaths <- getOption("adb_path")
@@ -23,24 +27,29 @@ updateTable <- function(index = NULL, name = NULL){
   # if a file already exists, join the new data to that
   if(testFileExists(x = paste0(intPaths, "/", name, ".csv"))){
     oldIndex <- read_csv(paste0(intPaths, "/", name, ".csv"), col_types = getColTypes(input = index))
-    write_csv(x = oldIndex,
-              path = paste0(intPaths, "/log/", name, "_", theTime, ".csv"),
-              na = "", append = FALSE)
 
-    # create vector of columns that should be checked for distinct values
-    keepCols <- names(index)[!str_detect(string = names(index), pattern = "ID") &
-                               !str_detect(string = names(index), pattern = "notes") &
-                               !str_detect(string = names(index), pattern = "date")]
+    if(backup){
+      write_csv(x = oldIndex,
+                file = paste0(intPaths, "/log/", name, "_", theTime, ".csv"),
+                na = "", append = FALSE)
+    }
+
+    if(is.null(matchCols)){
+      matchCols <- names(oldIndex)
+      matchCols <- matchCols[!matchCols %in% "notes"]
+    } else {
+      assertSubset(x = matchCols, choices = names(oldIndex))
+    }
 
     # join the old table with 'index'
     index <- union(oldIndex, index) %>%
-      group_by(.dots = keepCols) %>%
-      filter(row_number() == 1) %>%
+      group_by(across(all_of(matchCols))) %>%
+      filter(row_number() == n()) %>%
       arrange(!!as.name(colnames(index)[1]))
   }
 
   # store it
   write_csv(x = index,
-            path = paste0(intPaths, "/", name, ".csv"),
+            file = paste0(intPaths, "/", name, ".csv"),
             na = "")
 }

@@ -117,6 +117,7 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
   assertCharacter(x = updateFrequency, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = notes, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertLogical(x = update, len = 1)
+  assertLogical(x = overwrite, len = 1)
 
   # ask for missing and required arguments
   if(is.null(nation)){
@@ -145,6 +146,7 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
       nameCol <- "units"
     }
   }
+
 
   if(is.null(gSeries)){
     message("please type in to which series the geometry belongs: ")
@@ -197,10 +199,10 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
   }
 
   # determine nation value
-  if(!testChoice(x = tolower(nation), choices = countries$nation)){
+  if(!testChoice(x = nation, choices = countries$nation)){
     theNation <- NULL
   } else{
-    nations <- tolower(nation)
+    nations <- nation
     assertChoice(x = nations, choices = countries$nation)
     theNation <- countries %>%
       as_tibble() %>%
@@ -215,8 +217,15 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
   filePath <- paste0(intPaths, "/adb_geometries/stage2/", fileName)
   filesTrace <- str_split(archive, "\\|")[[1]]
 
-  if(any(inv_geometries$source_file %in% fileName) & !overwrite){
-    return(paste0("'", fileName, "' has already been registered."))
+  newGID <- ifelse(length(inv_geometries$geoID)==0, 1, as.integer(max(inv_geometries$geoID)+1))
+  if(any(inv_geometries$source_file %in% fileName)){
+    if(overwrite){
+      newGID <- inv_geometries$geoID[which(inv_geometries$source_file %in% fileName)]
+    } else {
+      temp <- inv_geometries[which(inv_geometries$source_file %in% fileName), ]
+      message(paste0("! the geometry '", fileName, "' has already been registered !"))
+      return(temp)
+    }
   }
 
   if(is.null(archiveLink)){
@@ -270,14 +279,14 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
   }
 
   # test whether the archive file is available
-  if(!testFileExists(x = paste0(intPaths, "/adb_geometries/stage1/", filesTrace[1]), "r")){
+  if(!testFileExists(x = paste0(intPaths, "/adb_geometries/stage1/", filesTrace[1]))){
     message(paste0("... please store the archive '", filesTrace[[1]], "' in './adb_geometries/stage1'"))
     if(!testing){
       done <- readline(" -> press any key when done: ")
     }
 
     # make sure that the file is really there
-    assertFileExists(x = paste0(intPaths, "/adb_geometries/stage1/", filesTrace[1]), access = "r")
+    assertFileExists(x = paste0(intPaths, "/adb_geometries/stage1/", filesTrace[1]))
 
     # ... and if it is compressed, whether also the file therein is given that contains the data
     if(testCompressed(x = filesTrace[1]) & length(filesTrace) < 2){
@@ -293,13 +302,13 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
 
   # test whether the geometry file is available and proper
   if(update){
-    if(!testFileExists(x = filePath, access = "r", extension = "gpkg")){
+    if(!testFileExists(x = filePath, extension = "gpkg")){
       message(paste0("... please store the geometry as '", fileName, "' in './adb_geometries/stage2'"))
       if(!testing){
         done <- readline(" -> press any key when done: ")
       }
       # make sure that the file is really there
-      assertFileExists(x = filePath, access = "r", extension = "gpkg")
+      assertFileExists(x = filePath, extension = "gpkg")
     }
 
     # to check that what has been given in 'nation' and 'nameCol' is in fact a
@@ -308,6 +317,11 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
       theGeometry <- read_sf(dsn = filePath,
                              stringsAsFactors = FALSE)
       assertChoice(x = nation, choices = colnames(theGeometry))
+    }
+
+    nameCols <- str_split(string = nameCol, pattern = "\\|")[[1]]
+    if(length(nameCols) != level){
+      warning("'nameCol' contains less entries (", length(nameCols), ") than implied by the level (", level, ")")
     }
 
     # determine which layers exist and ask the user which to chose, if none is
@@ -328,7 +342,6 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
     }
 
     # construct new documentation
-    newGID <- ifelse(length(inv_geometries$geoID)==0, 1, as.integer(max(inv_geometries$geoID)+1))
     doc <- tibble(geoID = newGID,
                   datID = dataSeries,
                   level = level,
@@ -342,10 +355,10 @@ regGeometry <- function(nation = NULL, subset = NULL, gSeries = NULL, level = NU
                   next_update = nextUpdate,
                   update_frequency = updateFrequency,
                   notes = notes)
-    if(!any(inv_geometries$source_file %in% fileName)){
+    if(!any(inv_geometries$source_file %in% fileName) | overwrite){
       # in case the user wants to update, attach the new information to the table
       # inv_geometries.csv
-      updateTable(index = doc, name = "inv_geometries")
+      updateTable(index = doc, name = "inv_geometries", matchCols = c("source_file", "level"))
     }
     return(doc)
   } else {

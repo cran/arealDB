@@ -20,6 +20,10 @@
 #' @param keepOrig [\code{logical(1)}]\cr to keep the original units and
 #'   variable names in the output (\code{TRUE}) or to remove them (\code{FALSE},
 #'   default). Useful for debugging.
+#' @param outType [\code{logical(1)}]\cr the output file-type, currently
+#'   implemented options are either \emph{*.csv} (more exchangeable for a
+#'   workflow based on several programs) or \emph{*.rds} (smaller and less
+#'   error-prone data-format but can only be read by R efficiently).
 #' @param verbose [\code{logical(1)}]\cr be verbose about translating terms
 #'   (default \code{FALSE}). Furthermore, you can use
 #'   \code{\link{suppressMessages}} to make this function completely silent.
@@ -39,20 +43,17 @@
 #'   To normalise data tables, this function proceeds as follows: \enumerate{
 #'   \item Read in \code{input} and extract initial metadata from the file name.
 #'   \item Employ the function \code{tabshiftr::\link{reorganise}} to reshape
-#'   \code{input} according to the respective schema description (see
-#'   \code{tabshiftr::\link{makeSchema}}). \item Match the territorial units in
-#'   \code{input} via the \code{\link{matchUnits}}. \item If \code{...} has been
-#'   provided with variables to match, those are matched via
-#'   \code{\link{matchVars}}. \item Harmonise territorial unit names. \item If
-#'   \code{update = TRUE}, store the processed data table at stage three.}
+#'   \code{input} according to the respective schema description. \item Match
+#'   the territorial units in \code{input} via \code{\link{matchUnits}}. \item
+#'   If \code{...} has been provided with variables to match, those are matched
+#'   via \code{\link{matchVars}}. \item Harmonise territorial unit names. \item
+#'   If \code{update = TRUE}, store the processed data table at stage three.}
 #' @family normalisers
 #' @return This function harmonises and integrates so far unprocessed data
-#'   tables at stage two into stage three of the geospatial database. It
-#'   produces for each nation in the registered data tables a comma-separated
-#'   values file that includes all thematic areal data.
+#'   tables at stage two into stage three of the areal database. It produces for
+#'   each nation in the registered data tables a comma-separated values file
+#'   that includes all thematic areal data.
 #' @examples
-#' library(readr)
-#'
 #' # build the example database
 #' makeExampleDB(until = "normGeometry")
 #'
@@ -61,7 +62,7 @@
 #' normTable(faoID = list(commodities = "target"), update = TRUE)
 #'
 #' # ... and check the result
-#' output <- read_csv(paste0(tempdir(), "/newDB/adb_tables/stage3/estonia.csv"))
+#' output <- readRDS(paste0(tempdir(), "/newDB/adb_tables/stage3/Estonia.rds"))
 #' @importFrom checkmate assertNames assertFileExists assertLogical
 #' @importFrom rlang exprs
 #' @importFrom tabshiftr reorganise
@@ -74,7 +75,8 @@
 #' @export
 
 normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
-                      update = FALSE, keepOrig = FALSE, verbose = FALSE){
+                      update = FALSE, keepOrig = FALSE, outType = "rds",
+                      verbose = FALSE){
 
   # set internal paths
   intPaths <- getOption(x = "adb_path")
@@ -87,7 +89,6 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
 
   # get objects
   inv_tables <- read_csv(paste0(intPaths, "/inv_tables.csv"), col_types = "iiiccccDccccc")
-  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iiiccccccDDcc")
   vars <- exprs(..., .named = TRUE)
 
   if(update){
@@ -112,6 +113,7 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
                                                            "next_update", "update_frequency", "metadata_link",
                                                            "metadata_path", "notes"))
   assertLogical(x = update, len = 1)
+  assertNames(x = outType, subset.of = c("csv", "rds"))
   assertChoice(x = source, choices = c("tabID", "datID"))
   assertList(x = vars)
 
@@ -126,9 +128,10 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
     fields <- str_split(file_name, "_")[[1]]
 
     if(!file_name %in% inv_tables$source_file){
+      message("\n--- ", i, " / ", length(input), " skipping ", rep("-", times = getOption("width")-(nchar(i)+nchar(length(input))+4+nchar(file_name))), " ", file_name, " ---")
       next
     } else {
-      message("\n--- ", i, " ", rep("-", times= getOption("width")-(nchar(i)+12+nchar(file_name))), " ", file_name, " ---")
+      message("\n--- ", i, " / ", length(input), " ", rep("-", times = getOption("width")-(nchar(i)+nchar(length(input))+13+nchar(file_name))), " ", file_name, " ---")
     }
 
     # get some variables
@@ -196,38 +199,41 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
       subNations <- NULL
     }
 
-
     # reorganise data
     message("\n--> reading new data table ...")
-    temp <- read.csv(file = thisInput, header = FALSE, as.is = TRUE, na.strings = algorithm@meta$na) %>%
+    thisTable <- read.csv(file = thisInput, header = FALSE, as.is = TRUE, na.strings = algorithm@format$na, encoding = "UTF-8") %>%
       as_tibble()
     message("    reorganising table with '", thisSchema, "' ...")
-    temp <- temp %>%
-      reorganise(schema = algorithm) %>%
-      filter_at(vars(starts_with("al")), all_vars(!is.na(.)))
+    temp <- thisTable %>%
+      reorganise(schema = algorithm)
 
     # make al1 if it doesn't extist (is needed below for subsetting by nation)
     if(!"al1" %in% names(temp)){
       message("    reconstructing 'al1' ...")
       if(nchar(fields[1]) == 0){
-        stop("  ! the data table '", file_name, "' seems to include several nations but no column for nations (al1).\n Is the schema description correct?")
+        stop("  ! the data table '", file_name, "' seems to include several nations but the schema description doesn't contain the variable 'al1'.")
       } else {
-        temp$al1 <- countries$unit[countries$iso_a3 == toupper(fields[1])]
+        temp$al1 <- countries$unit[which(countries$iso_a3 == toupper(fields[1]))]
         temp <- temp %>% select(al1, everything())
       }
     }
+
+    temp <- temp %>%
+      filter_at(vars(starts_with("al")), all_vars(!is.na(.)))
 
     # translate nations in input
     message("    harmonising nation names ...")
     nations <- translateTerms(terms = unique(temp$al1),
                               index = "tt_nations",
                               source = list("tabID" = tabID),
+                              limit = subNations,
                               verbose = verbose) %>%
       filter(!target %in% c("ignore", "missing")) %>%
       select(target, origin)
 
     temp <- left_join(temp, nations, by = c("al1" = "origin")) %>%
       select(-al1) %>%
+      filter(!is.na(target)) %>%
       select(al1 = target, everything())
     if(!is.null(subNations)){
       temp <- temp %>%
@@ -254,7 +260,7 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
       theSource <- list("datID" = inv_tables$datID[inv_tables$tabID %in% tabID])
     }
 
-    temp <- temp %>%
+    temp_units <- temp %>%
       mutate(tabID = tabID,
              geoID = geoID) %>%
       matchUnits(source = theSource)
@@ -266,13 +272,14 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
         mutate(new = if_else(orig %in% names(vars[[1]]), names(vars), orig)) %>%
         pull(new)
       message()
-      temp <- temp %>%
-        matchVars(source = tabID, !!!vars)
+      temp_all <- temp_units %>%
+        matchVars(source = theSource, !!!vars)
+    } else {
+      temp_all <- temp_units
     }
 
-    temp <- temp %>%
-      select(tabID, geoID, ahID, everything()) %>%
-      mutate(year = as.character(year))
+    temp <- temp_all %>%
+      select(tabID, geoID, ahID, everything())
 
     # in case the user wants to update, update the data table
     if(length(vars) == 0) {
@@ -297,16 +304,25 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
           filter_at(.vars = outVars, all_vars(!is.na(.)))
 
         # append output to previous file
-        if(file.exists(paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".csv"))){
-          oldData <- read_csv(file = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".csv"),
-                              col_types = cols(id = "i", tabID = "i", geoID = "i", ahID = "c", year = "c", .default = "d"))
+        avail <- list.files(path = paste0(intPaths, "/adb_tables/stage3/"), pattern = paste0("^", theNations[j], "."))
 
+        if(length(avail) == 1){
+
+          if(outType == "csv"){
+            prevData <- read_csv(file = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".csv"),
+                                 col_types = cols(id = "i", tabID = "i", geoID = "i", ahID = "c", year = "c", .default = "d"))
+          } else {
+            prevData <- readRDS(file = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".rds"))
+          }
           out <- tempOut %>%
-            bind_rows(oldData, .) %>%
+            bind_rows(prevData, .) %>%
             select(-id) %>%
             distinct() %>%
             mutate(id = seq_along(year)) %>%
             select(id, everything())
+
+        } else if(length(avail > 1)){
+          # stop("the nation '", theNations[j], "' exists several times in the output folder '/adb_tablse/stage3/'.")
         } else {
           out <- tempOut %>%
             distinct() %>%
@@ -315,7 +331,13 @@ normTable <- function(input = NULL, ..., source = "tabID", pattern = NULL,
         }
 
         # write file to 'stage3' and move to folder 'processed'
-        write_csv(x = out, path = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".csv"), na = "")
+        if(outType == "csv"){
+          write_csv(x = out,
+                    file = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".csv"),
+                    na = "")
+        } else if(outType == "rds"){
+          saveRDS(object = out, file = paste0(intPaths, "/adb_tables/stage3/", theNations[j], ".rds"))
+        }
       }
 
       if(moveFile){

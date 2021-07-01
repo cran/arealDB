@@ -2,7 +2,7 @@
 #'
 #' This function matches the values of a variable with an index and returns the
 #' specified IDs.
-#' @param input [\code{character(.)}]\cr terms to be translated.
+#' @param input [\code{character(.)}]\cr table in which to match variables.
 #' @param source [\code{integerish(1)}]\cr the census ID (\code{cenID}) from
 #'   which the terms have been taken.
 #' @param ... [\code{list(1)}]\cr lists that capture the variables by which to
@@ -33,7 +33,7 @@ matchVars <- function(input = NULL, source = NULL, ...){
 
   # check validity of arguments
   assertTibble(x = input)
-  assertIntegerish(x = source)
+  assertList(x = source, len = 1)
   assertList(x = vars)
 
   message("--> matching variables of ...")
@@ -57,7 +57,7 @@ matchVars <- function(input = NULL, source = NULL, ...){
 
     # translate the terms
     theTerms <- translateTerms(terms = unique(inputTerms),
-                               source = list("tabID" = source),
+                               source = source,
                                index = paste0("tt_", varName))
 
     # get the matching terms

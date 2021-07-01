@@ -11,7 +11,8 @@ regDataseries(
   licence_link = NULL,
   licence_path = NULL,
   notes = NULL,
-  update = FALSE
+  update = FALSE,
+  overwrite = FALSE
 )
 }
 \arguments{
@@ -26,13 +27,16 @@ where the dataseries or additional information can be found.}
 \item{licence_link}{[\code{character(1)}]\cr link to the licence or the
 webpage from which the licence was copied.}
 
-\item{licence_path}{[\code{character(1)}]\cr path to the local file in with
+\item{licence_path}{[\code{character(1)}]\cr path to the local file in which
 the licence text is stored.}
 
 \item{notes}{[\code{character(1)}]\cr optional notes.}
 
 \item{update}{[\code{logical(1)}]\cr whether or not the file
 'inv_dataseries.csv' should be updated.}
+
+\item{overwrite}{[\code{logical(1)}]\cr whether or not the dataseries to
+register shall overwrite a potentially already existing older version.}
 }
 \value{
 Returns a tibble of the new entry that is appended to

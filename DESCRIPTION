@@ -9,7 +9,7 @@ Description: Many relevant applications in the environmental and socioeconomic
     make this a tedious and error-prone process. 'arealDB' tackles those problems and 
     helps the user to integrate a harmonised databases of areal data. Read the pre-print 
     at Ehrmann, Seppelt & Meyer (2020) <arXiv:1909.06610>.
-Version: 0.3.4
+Version: 0.3.9
 Authors@R: c(
     person("Steffen", "Ehrmann", 
            email = "steffen.science@funroll-loops.de", 
@@ -23,12 +23,12 @@ Authors@R: c(
            email = "felipe.cozimmelges@wur.nl",
            role = c("ctb"),
            comment = c(ORCID = "0000-0003-0833-8973")),
-    person("Carsten", "Mayer",
+    person("Carsten", "Meyer",
            email = "carsten.meyer@idiv.de", 
-           role = c("ctb"), 
+           role = c("aut"), 
            comment = c(ORCID = "0000-0003-3927-5856")))
-URL: https://gitlab.com/luckinet/software/arealDB
-BugReports: https://gitlab.com/luckinet/software/arealDB/issues
+URL: https://github.com/EhrmannS/arealDB
+BugReports: https://github.com/EhrmannS/arealDB/issues
 Depends: R (>= 2.10)
 Language: en-gb
 License: GPL-3
@@ -37,13 +37,13 @@ LazyData: true
 Imports: checkmate, dplyr, magrittr, readr, rlang, sf, stringr, tibble,
         tidyr, tidyselect, tabshiftr
 Suggests: testthat, knitr, rmarkdown, covr
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 NeedsCompilation: no
-Packaged: 2020-06-30 15:27:24 UTC; se87kuhe
+Packaged: 2021-07-01 16:07:24 UTC; se87kuhe
 Author: Steffen Ehrmann [aut, cre] (<https://orcid.org/0000-0002-2958-0796>),
   Arne Rümmler [aut, ctb] (<https://orcid.org/0000-0001-8637-9071>),
   Felipe Melges [ctb] (<https://orcid.org/0000-0003-0833-8973>),
-  Carsten Mayer [ctb] (<https://orcid.org/0000-0003-3927-5856>)
+  Carsten Meyer [aut] (<https://orcid.org/0000-0003-3927-5856>)
 Maintainer: Steffen Ehrmann <steffen.science@funroll-loops.de>
 Repository: CRAN
-Date/Publication: 2020-07-01 09:10:06 UTC
+Date/Publication: 2021-07-01 16:30:02 UTC
