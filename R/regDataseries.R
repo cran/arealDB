@@ -1,8 +1,9 @@
 #' Register a new dataseries
 #'
 #' This function registers a new dataseries of both, geometries or areal data
-#' into the geospatial database.
-#' @param name [\code{character(1)}]\cr the dataseries abbreviation.
+#' into the geospatial database. This contains the name and relevant meta-data
+#' of a dataseries to enable provenance tracking and reproducability.
+#' @param name [\code{character(1)}]\cr the dataseries abbreviation or name.
 #' @param description [\code{character(1)}]\cr the "long name" or "brief
 #'   description" of the dataseries.
 #' @param homepage [\code{character(1)}]\cr the homepage of the data provider
@@ -13,20 +14,24 @@
 #'   the licence text is stored.
 #' @param notes [\code{character(1)}]\cr optional notes.
 #' @param update [\code{logical(1)}]\cr whether or not the file
-#'   'inv_dataseries.csv' should be updated.
+#'   'inv_dataseries.csv' should be updated (obligatory to continue registering
+#'   geometries or tables associated to this dataseries).
 #' @param overwrite [\code{logical(1)}]\cr whether or not the dataseries to
 #'   register shall overwrite a potentially already existing older version.
 #' @return Returns a tibble of the new entry that is appended to
 #'   'inv_dataseries.csv' in case \code{update = TRUE}.
+#' @family register functions
 #' @examples
-#' # start the example database
-#' makeExampleDB(until = "setVariables")
+#' if(dev.interactive()){
+#'   # start the example database
+#'   makeExampleDB(until = "match_gazetteer", path = tempdir())
 #'
-#' regDataseries(name = "gadm",
-#'               description = "Database of Global Administrative Areas",
-#'               homepage = "https://gadm.org/index.html",
-#'               licence_link = "https://gadm.org/license.html",
-#'               update = TRUE)
+#'   regDataseries(name = "gadm",
+#'                 description = "Database of Global Administrative Areas",
+#'                 homepage = "https://gadm.org/index.html",
+#'                 licence_link = "https://gadm.org/license.html",
+#'                 update = TRUE)
+#' }
 #' @importFrom readr read_csv
 #' @importFrom checkmate assertDataFrame assertNames assertCharacter
 #'   assertLogical
@@ -44,8 +49,9 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
   testing <- getOption(x = "adb_testing")
 
   # check validity of arguments
-  assertDataFrame(x = inv_dataseries)
-  assertNames(x = colnames(inv_dataseries), permutation.of = c("datID", "name", "description", "homepage", "licence_link", "licence_path", "notes"))
+  assertNames(x = colnames(inv_dataseries),
+              permutation.of = c("datID", "name", "description", "homepage",
+                                 "licence_link", "licence_path", "notes"))
   assertCharacter(x = name, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = description, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = homepage, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)

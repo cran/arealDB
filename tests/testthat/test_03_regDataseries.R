@@ -1,11 +1,13 @@
 library(testthat)
 library(checkmate)
+library(readr)
 context("regDataseries")
 
 
 test_that("a dataseries inventory entry can be produced", {
 
-  makeExampleDB(until = "setVariables")
+  dbpath <- paste0(tempdir(), "/newDB")
+  makeExampleDB(until = "start_arealDB", path = dbpath)
   inPath <- system.file("test_datasets", package = "arealDB", mustWork = TRUE)
 
   output <- regDataseries(name = "gadm",
@@ -26,7 +28,8 @@ test_that("a dataseries inventory entry can be produced", {
 
 test_that("function asks for details, if not provided", {
 
-  makeExampleDB(until = "setVariables")
+  dbpath <- paste0(tempdir(), "/newDB")
+  makeExampleDB(until = "start_arealDB", path = dbpath)
 
   expect_message(object = regDataseries())
   output <- capture_messages(code = regDataseries())

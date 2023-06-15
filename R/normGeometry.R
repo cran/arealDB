@@ -1,22 +1,36 @@
 #' Normalise geometries
 #'
-#' Harmonise and integrate geometries in a standardised format
+#' Harmonise and integrate geometries into a standardised format
 #' @param input [\code{character(1)}]\cr path of the file to normalise. If this
 #'   is left empty, all files at stage two as subset by \code{pattern} are
 #'   chosen.
-#' @param ... [\code{character(.)}]\cr a subset of administrative units as given
-#'   by \code{nation}, \code{continent}, \code{region}, \code{subregion} or
-#'   \code{un_member = TRUE/FALSE}. Valid selection criteria and their values
-#'   are in the object \code{\link{countries}}.
-#' @param thresh [\code{integerish(1)}]\cr the deviation of percentage of
-#'   overlap above which to consider two territorial units "different".
+#' @param thresh [\code{integerish(1)}]\cr
 #' @param outType [\code{character(1)}]\cr the output file-type, see
 #'   \code{\link{st_drivers}} for a list. If a file-type supports layers, they
 #'   are stored in the same file, otherwise the different layers are provided
 #'   separately. For an R-based workflow, \code{"rds"} could be an efficient
 #'   option.
 #' @param pattern [\code{character(1)}]\cr an optional regular expression. Only
-#'   dataset names which match the regular expression will be returned.
+#'   dataset names which match the regular expression will be processed.
+#' @param query [\code{character(1)}]\cr part of the SQL query (starting from
+#'   WHERE) used to subset the input geometries, for example \code{where NAME_0
+#'   = 'France'}. The first part of the query (where the layer is defined) is
+#'   derived from the meta-data of the currently handled geometry.
+#' @param priority [\code{character(1)}]\cr how to match the new geometries with
+#'   the already harmonised database. This can either be
+#'
+#'   \itemize{
+#'     \item \code{"spatial"}: where all territories are intersected spatially or
+#'     \item \code{"ontology"}: where territories are matched by comparing their
+#'     name with the ontology
+#'     and those that do not match are intersected spatially,
+#'     \item \code{"both"}: where territories are matched with the ontology and
+#'     spatially, and conflicts are indicated
+#'   }
+#' @param beep [\code{integerish(1)}]\cr Number specifying what sound to be
+#'   played to signal the user that a point of interaction is reached by the
+#'   program, see \code{\link[beepr]{beep}}.
+#' @param simplify [\code{logical(1)}]\cr whether or not to simplify geometries.
 #' @param update [\code{logical(1)}]\cr whether or not the physical files should
 #'   be updated (\code{TRUE}) or the function should merely return the geometry
 #'   inventory of the handled files (\code{FALSE}, default). This is helpful to
@@ -27,67 +41,95 @@
 #'   \code{\link{suppressMessages}} to make this function completely silent.
 #' @details To normalise geometries, this function proceeds as follows:
 #'   \enumerate{ \item Read in \code{input} and extract initial metadata from
-#'   the file name. \item Loop through every nation potentially included in the
-#'   file that shall be processed and carry out the following steps: \itemize{
-#'   \item In case the geometries are provided as a list of simple feature
-#'   POLYGONS, they are dissolved into a single MULTIPOLYGON per nation. \item
-#'   In case the nation to which a geometry belongs has not yet been created at
-#'   stage three, the following steps are carried out: \enumerate{ \item Check
-#'   whether the recent dataset is GADM, to build the initial administrative
-#'   hierarchy from GADM geometries, and stop if this is not the case. \item
-#'   Extract the full hierarchy of all territorial units that are part of the
-#'   geometry. \item Reconstruct ahID from the intermediate spatial objects and
-#'   from the metadata. } \item In case the nation to which the geometry belongs
-#'   has already been created, the following steps are carried out: \enumerate{
-#'   \item Check whether the new geometries have the same coordinate reference
-#'   system as the already existing database and re-project the new geometries
-#'   if this is not the case. \item Check whether all new geometries are already
-#'   exactly matched spatially and stop if that is the case. \item Check whether
-#'   the new geometries are all within the already defined parents, and save
-#'   those that are not as a new geometry. \item Calculate spatial overlap and
-#'   distinguish the geometries into those that overlap with more and those with
-#'   less than \code{thresh}. \item For all units that did match, copy ahID from
-#'   the geometries they overlap. \item For all units that did not match,
-#'   rebuild metadata and a new ahID. } \item If update = TRUE, store the
-#'   processed geometry at stage three.} \item Move the geometry to the folder
-#'   '/processed', if it is fully processed.}
-#' @family normalisers
+#'   the file name. \item In case filters are set, the new geometry is filtered
+#'   by those. \item The territorial names are matched with the gazetteer to
+#'   harmonise new territorial names (at this step, the function might ask the
+#'   user to edit the file 'matching.csv' to align new names with already
+#'   harmonised names). \item Loop through every nation potentially included in
+#'   the file that shall be processed and carry out the following steps:
+#'   \itemize{ \item In case the geometries are provided as a list of simple
+#'   feature POLYGONS, they are dissolved into a single MULTIPOLYGON per main
+#'   polygon. \item In case the nation to which a geometry belongs has not yet
+#'   been created at stage three, the following steps are carried out:
+#'   \enumerate{ \item Store the current geometry as basis of the respective
+#'   level (the user needs to make sure that all following levels of the same
+#'   dataseries are perfectly nested into those parent territories, for example
+#'   by using the GADM dataset) } \item In case the nation to which the geometry
+#'   belongs has already been created, the following steps are carried out:
+#'   \enumerate{ \item Check whether the new geometries have the same coordinate
+#'   reference system as the already existing database and re-project the new
+#'   geometries if this is not the case. \item Check whether all new geometries
+#'   are already exactly matched spatially and stop if that is the case. \item
+#'   Check whether the new geometries are all within the already defined
+#'   parents, and save those that are not as a new geometry. \item Calculate
+#'   spatial overlap and distinguish the geometries into those that overlap with
+#'   more and those with less than \code{thresh}. \item For all units that did
+#'   match, copy gazID from the geometries they overlap. \item For all units that
+#'   did not match, rebuild metadata and a new gazID. } \item If update = TRUE,
+#'   store the processed geometry at stage three.} \item Move the geometry to
+#'   the folder '/processed', if it is fully processed.}
+#' @family normalise functions
 #' @return This function harmonises and integrates so far unprocessed geometries
 #'   at stage two into stage three of the geospatial database. It produces for
-#'   each nation in the registered geometries a spatial file of the specified
-#'   file-type.
+#'   each main polygon (e.g. nation) in the registered geometries a spatial file
+#'   of the specified file-type.
 #' @examples
-#' library(sf)
+#' if(dev.interactive()){
+#'   library(sf)
 #'
-#' # build the example database
-#' makeExampleDB(until = "regGeometry")
+#'   # build the example database
+#'   makeExampleDB(until = "regGeometry", path = tempdir())
 #'
-#' # normalise all geometries ...
-#' normGeometry(nation = "estonia", update = TRUE)
+#'   # normalise all geometries ...
+#'   normGeometry(nation = "estonia", update = TRUE)
 #'
-#' # ... and check the result
-#' st_layers(paste0(tempdir(), "/newDB/adb_geometries/stage3/Estonia.gpkg"))
-#' output <- st_read(paste0(tempdir(), "/newDB/adb_geometries/stage3/Estonia.gpkg"))
+#'   # ... and check the result
+#'   st_layers(paste0(tempdir(), "/adb_geometries/stage3/Estonia.gpkg"))
+#'   output <- st_read(paste0(tempdir(), "/adb_geometries/stage3/Estonia.gpkg"))
+#' }
 #' @importFrom checkmate assertFileExists assertIntegerish assertLogical
 #'   assertCharacter assertChoice testFileExists
+#' @importFrom ontologics load_ontology new_source new_mapping get_class
+#'   get_source new_concept
 #' @importFrom dplyr filter distinct select mutate rowwise filter_at vars
 #'   all_vars pull group_by arrange summarise mutate_if rename n if_else ungroup
 #'   across
 #' @importFrom rlang sym exprs
-#' @importFrom readr read_csv
+#' @importFrom readr read_csv read_rds
+#' @importFrom purrr map
+#' @importFrom tools file_ext
 #' @importFrom sf st_layers read_sf st_write st_join st_buffer st_equals st_sf
-#'   st_transform st_crs st_geometry_type st_area st_intersection st_drivers
-#' @importFrom stringr str_split
-#' @importFrom tibble as_tibble
+#'   st_transform st_crs st_crs<- st_geometry_type st_area st_intersection
+#'   st_drivers NA_crs_ st_is_valid st_make_valid st_as_sf st_geometry st_intersects
+#' @importFrom rmapshaper ms_simplify
+#' @importFrom stringr str_split_1 str_to_title str_pad str_replace_all
+#' @importFrom tibble as_tibble add_column
+#' @importFrom dplyr bind_rows slice lag desc n_distinct left_join right_join first
 #' @importFrom tidyr unite
 #' @importFrom tidyselect starts_with all_of
+#' @importFrom progress progress_bar
+#' @importFrom utils tail head
+#' @importFrom stats na.omit
 #' @export
 
-normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
-                         pattern = NULL, update = FALSE, verbose = FALSE){
+normGeometry <- function(input = NULL, pattern = NULL, query = NULL, thresh = 10,
+                         outType = "gpkg", priority = "ontology", beep = NULL,
+                         simplify = FALSE, update = FALSE, verbose = FALSE){
+
+  # input = NULL; pattern = gs[2]; query = NULL; thresh = 10; outType = "gpkg"; priority = "spatial"; beep = NULL; simplify = FALSE; update = TRUE; verbose = FALSE; i = 1; j = 1
 
   # set internal paths
   intPaths <- paste0(getOption(x = "adb_path"))
+  gazPath <- paste0(getOption(x = "gazetteer_path"))
+
+  type <- str_split(tail(str_split(string = gazPath, pattern = "/")[[1]], 1), "[.]")[[1]][1]
+
+  # get territorial context
+  topClass <- paste0(getOption(x = "gazetteer_top"))
+  topUnits <- get_concept(class = topClass, ontology = gazPath) %>%
+    arrange(label)
+  allClasses <- get_class(ontology = gazPath) %>%
+    pull(label)
 
   if(is.null(input)){
     input <- list.files(path = paste0(intPaths, "/adb_geometries/stage2"), full.names = TRUE, pattern = pattern)
@@ -96,20 +138,25 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
   }
 
   # set internal objects
-  subsets <- exprs(..., .named = TRUE)
-  assertList(x = subsets)
   moveFile <- TRUE
 
   # get tables
-  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iiiccccccDDcc")
-  assertNames(x = colnames(inv_geometries), permutation.of = c("geoID", "datID", "level", "source_file",
-                                                               "layer", "nation_column", "unit_column", "orig_file", "orig_link",
-                                                               "download_date", "next_update", "update_frequency", "notes"))
+  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iicccccDDcc")
+  inv_dataseries <- read_csv(paste0(intPaths, "/inv_dataseries.csv"), col_types = "icccccc")
 
   # check validity of arguments
   assertIntegerish(x = thresh, any.missing = FALSE)
   assertLogical(x = update, len = 1)
+  assertLogical(x = simplify, len = 1)
   assertNames(x = outType, subset.of = c(tolower(st_drivers()$name), "rds"))
+  assertNames(x = colnames(inv_geometries),
+              permutation.of = c("geoID", "datID", "source_file", "layer",
+                                 "label", "orig_file", "orig_link", "download_date",
+                                 "next_update", "update_frequency", "notes"))
+  assertNames(x = colnames(inv_dataseries),
+              permutation.of = c("datID", "name", "description", "homepage",
+                                 "licence_link", "licence_path", "notes"))
+  assertChoice(x = priority, choices = c("ontology", "spatial", "both"), null.ok = FALSE)
 
   outLut <- NULL
   for(i in seq_along(input)){
@@ -126,596 +173,550 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
     }
 
     # get some variables
-    lut <- inv_geometries[grep(pattern = paste0("^", file_name, "$"), x = inv_geometries$source_file),]
-    if(file_name %in% lut$source_file){
-      newGID <- lut$geoID
-      theLayer <- lut$layer
-      theLevel <- lut$level
-      natCol <- lut$nation_column
-      unitCol <- lut$unit_column
+    geom_meta <- inv_geometries[grep(pattern = paste0("^", file_name, "$"), x = inv_geometries$source_file),]
+    if(file_name %in% geom_meta$source_file){
+      newGID <- geom_meta$geoID
+      layerName <- geom_meta$layer
+      classLabel <- geom_meta$label
+      gIDs <- inv_geometries$geoID[inv_geometries$datID == geom_meta$datID]
 
-      # if there are several columns that contain units, split them and make
-      # 'unitCol' the last value
-      if(grepl(pattern = "\\|", x = unitCol)){
-        unitCols <- str_split(string = unitCol, pattern = "\\|")[[1]]
-        unitCol <- unitCols[length(unitCols)]
-      } else{
-        unitCols <- unitCol
+      # manage dataseries
+      dSeries <- inv_dataseries$name[inv_dataseries$datID == geom_meta$datID]
+      if(!dSeries %in% get_source(ontology = gazPath)$label){
+        new_source(name = dSeries, date = Sys.Date(), ontology = gazPath)
       }
-      natCol <- ifelse(is.na(natCol), unitCols[1], natCol)
+
+      # extract class and label ...
+      targetClass <- map(.x = classLabel,
+                         .f = function(x){
+                           temp <- str_split(x, "\\|")[[1]]
+                           map(str_split(temp, "="), head, 1)
+                         }) %>%
+        unlist() %>%
+        get_class(label = ., ontology = gazPath)
+      parentClass <- allClasses[which(allClasses %in% tail(targetClass$label, 1)) - 1]
+
+      targetLabel <- map(.x = classLabel,
+                        .f = function(x){
+                          temp <- str_split(x, "\\|")[[1]]
+                          map(str_split(temp, "="), tail, 1)
+                        }) %>%
+        unlist()
+
+      # ... and add them to the ontology
+      new_mapping(new = targetLabel, target = targetClass, source = dSeries,
+                  match = "exact", certainty = 3, type = "class",
+                  ontology = gazPath)
+
+      unitCols <- targetClass$label
+
+      if(unitCols[1] != topClass){
+        theUnits <- str_split(string = geom_meta$source_file, pattern = "_")[[1]][1]
+        assertSubset(x = theUnits, choices = topUnits$label)
+      } else {
+        theUnits <- NULL
+      }
+
     } else{
       stop(paste0("  ! the file '", file_name, "' has not been registered yet."))
     }
 
     # read the object
     message("\n--> reading new geometries from '", file_name, "' ...")
-    newLayers <- st_layers(dsn = thisInput)
-    newGeom <- read_sf(dsn = thisInput,
-                       layer = theLayer,
-                       stringsAsFactors = FALSE)
+    if(!is.null(query)){
+      moveFile <- FALSE
+      inGeom <- read_sf(dsn = thisInput,
+                        query = paste0("select * from ", layerName, " ", query),
+                        stringsAsFactors = FALSE)
+    } else {
+      inGeom <- read_sf(dsn = thisInput,
+                        layer = layerName,
+                        stringsAsFactors = FALSE)
+    }
 
-    # determine nation value
-    if(fields[1] == ""){
-      severalNations <- TRUE
-      nationCol <- lut$nation_column
+    # stop this iteration when 'inGeom' has zero rows
+    if(dim(inGeom)[1] == 0){
+      next
+    }
 
-      theNations <- unique(eval(expr = parse(text = nationCol),
-                                envir = newGeom)) %>%
+    for(k in seq_along(unitCols)){
+      names(inGeom)[[which(names(inGeom) == targetLabel[k])]] <- unitCols[k]
+    }
+
+    if(!topClass %in% names(inGeom)){
+      inGeom <- inGeom %>%
+        add_column(tibble(!!topClass := theUnits), .before = unitCols[1])
+      unitCols <- c(topClass, unitCols)
+      allCols <- allClasses[which(allClasses %in% head(unitCols, 1)) : which(allClasses %in% tail(unitCols, 1))]
+    } else {
+      allCols <- unitCols
+    }
+
+    # construct the geom for further processing
+    if(priority == "ontology"){
+
+      # current work-around to only translate geometries that have a full set of territorial columns available
+      checkClasses <- allClasses[which(allClasses %in% head(unitCols, 1)) : which(allClasses %in% tail(unitCols, 1))]
+      if(!testNames(x = unitCols, identical.to = checkClasses)){
+        stop("some of the territory layers in this geometry are missing, please use the argument 'priority = spatial'.")
+      }
+
+      message("    harmonizing territory names ...")
+      harmGeom <- matchOntology(table = inGeom,
+                                columns = unitCols,
+                                dataseries = dSeries,
+                                ontology = gazPath,
+                                verbose = verbose,
+                                beep = beep)
+      # include a warning here in case matches other than 'close' have been used, which would lead to problems matching them in the ontology, or, alternatively implement a system that would derive the correct IDs automatically, just like below for when a spatial match is chosen
+
+    } else if(priority == "spatial"){
+
+      harmGeom <- matchOntology(table = inGeom,
+                                columns = unitCols[1],
+                                dataseries = dSeries,
+                                ontology = gazPath,
+                                verbose = verbose,
+                                beep = beep)
+
+      harmGeom <- harmGeom %>%
+        mutate(id = NA_character_,
+               external = paste0(!!sym(tail(unitCols, 1)), "_-_-", row_number()))
+
+      harmGeom <- harmGeom %>%
+        select(all_of(unitCols), id, match, external, everything())
+
+    }
+
+    if(is.null(theUnits)){
+      theUnits <- unique(eval(expr = parse(text = unitCols[1]), envir = harmGeom)) %>%
         as.character()
-      assertCharacter(x = theNations, min.len = 1, any.missing = FALSE)
-      nations <- translateTerms(terms = theNations,
-                                index = "tt_nations",
-                                source = list("geoID" = newGID),
-                                verbose = verbose)%>%
-        mutate(valid = if_else(target == "ignore", FALSE, if_else(target %in% countries$unit, TRUE, FALSE))) %>%
-        select(!!nationCol := origin, target, valid)
-      theNations <- nations[[nationCol]][nations$valid]
-
-      newGeom <- newGeom %>%
-        left_join(nations) %>%
-        filter(valid) %>%
-        mutate(!!nationCol := target) %>%
-        select(-valid, -target)
-      nations <- nations$target[nations$valid]
-
-    } else{
-      severalNations <- FALSE
-      nation <- toupper(fields[1])
-      assertChoice(x = nation, choices = countries$iso_a3)
-      nations <- countries %>%
-        as_tibble() %>%
-        filter(iso_a3 == !!nation) %>%
-        pull(nation)
-      theNations <- nations
     }
 
-    # potentially subset nation values
-    if(length(subsets) > 0){
-      assertChoice(x = names(subsets), choices = c("nation", "un_member", "continent", "region", "subregion"))
-
-      # unify also the nations with which to subset
-      if(any(names(subsets) == "nation")){
-        toUnify <- eval(subsets[[which(names(subsets) == "nation")]])
-        nationNames <- countries$nation[!is.na(countries$nation)]
-        unified <- translateTerms(terms = toUnify,
-                                  index = "tt_territories",
-                                  fuzzy_terms = nationNames,
-                                  source = list("geoID" = newGID),
-                                  verbose = verbose) %>%
-          pull(target)
-        subsets[[which(names(subsets) == "nation")]] <- unified
-      }
-      subNations <- countries %>%
-        filter_at(vars(!!names(subsets)), any_vars(. %in% as.character(subsets[[1]]))) %>%
-        pull(nation)
-      subNationInd <- which(nations %in% subNations)
-      nations <- nations[subNationInd]
-      theNations <- theNations[subNationInd]
-
-      # if 'subsets' is not empty, not all geometries are processed and thuse we
-      # don't want to move the file to './processed'
-      if(severalNations){
-        moveFile <- FALSE
-      }
-    }
-
-    if(length(nations) == 0){
+    if(length(theUnits) == 0){
       moveFile <- FALSE
       message("    ! New geometries not part of subset !")
     } else {
 
       # then we loop through all nations
-      for(j in seq_along(nations)){
+      for(j in seq_along(theUnits)){
 
-        tempNation <- nations[j]
-        # outNation <- theNations[j]
-        nationID <- as.integer(countries$ahID[countries$unit == tempNation])
-        message(paste0(" -> processing '", tempNation, "' ..."))
+        tempUnit <- theUnits[j]
 
-        # create a geom specifically for the recent nation
-        if(severalNations){
-          sourceGeom <- newGeom %>%
-            filter_at(vars(all_of(nationCol)), all_vars(. %in% tempNation)) %>%
-            select(all_of(unitCols))
-          assertChoice(x = natCol, choices = names(sourceGeom), .var.name = "names(nation_column)")
-        } else{
-          sourceGeom <- newGeom %>%
-            select(all_of(unitCols))
+        if(is.na(tempUnit)) next
+        message(paste0(" -> processing '", tempUnit, "' ..."))
+
+        if(length(theUnits) != 1){
+          # create a geom specifically for the recent top territory
+          stage2Geom <- harmGeom %>%
+            filter_at(vars(all_of(unitCols[1])), all_vars(. %in% tempUnit)) %>%
+            select(all_of(allCols), id, match, external)
+          assertChoice(x = allCols[1], choices = names(stage2Geom), .var.name = "names(nation_column)")
+        } else {
+          stage2Geom <- harmGeom %>%
+            # select(all_of(allCols), id, match, external) %>%
+            select(any_of(allCols), id, match, external)
         }
 
         # dissolve ----
         # in case the object consists of several POLYGONs per unique name, dissolve
         # them into a single MULTIPOLYGON
-        if(unique(st_geometry_type(sourceGeom)) == "POLYGON"){
-          uniqueUnits <- sourceGeom %>%
+        if(unique(st_geometry_type(stage2Geom)) == "POLYGON"){
+          uniqueUnits <- stage2Geom %>%
             as_tibble() %>%
             select(!!unitCols) %>%
             unique()
 
           if(all(!is.na(uniqueUnits))){
-            if(dim(sourceGeom)[1] > dim(uniqueUnits)[1]){
+            if(dim(stage2Geom)[1] > dim(uniqueUnits)[1]){
               message("    Dissolving multiple polygons into a single multipolygon")
 
-              sourceGeom <- sourceGeom %>%
-                group_by(across(all_of(unitCols))) %>%
+              stage2Geom <- stage2Geom %>%
+                group_by(across(c(all_of(unitCols), "id"))) %>%
                 summarise() %>%
                 ungroup()
-            } else {
-              sourceGeom <- sourceGeom %>%
-                select(!!unitCols)
             }
           } else{
             message("  ! The geometry contains only POLYGON features but no unique names to summarise them.")
           }
         }
 
+        # in case the object is not fully valid (e.g., degenerate edges), make
+        # it valid
+        if(!all(st_is_valid(stage2Geom))){
+          stage2Geom <- stage2Geom <- st_make_valid(x = stage2Geom)
+        }
+
         # file exists? ----
         # determine whether a geometry with the nation as name already exists and
         # whether that contains the correct layer ...
-        fileExists <- testFileExists(x = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"))
+        fileExists <- testFileExists(x = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".gpkg"))
         if(fileExists){
-          targetLayers <- st_layers(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"))
-          if(!grepl(pattern = paste0("level_", theLevel), x = paste0(targetLayers$name, collapse = "|"))){
+          targetLayers <- st_layers(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".gpkg"))
+          if(!grepl(pattern = tail(targetClass$label, 1), x = paste0(targetLayers$name, collapse = "|"))){
             fileExists <- FALSE
           }
         }
 
         # ... if yes, read it in, otherwise create it
-        if(fileExists){
+        if(fileExists | priority == "spatial"){
 
           # read target geoms ----
           message("    Reading target geometries")
-          targetGeom <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
-                                layer = sort(targetLayers$name)[theLevel],
-                                stringsAsFactors = FALSE)
-          if(theLevel > 1){
-            parentGeom <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
-                                  layer = sort(targetLayers$name)[theLevel-1],
-                                  stringsAsFactors = FALSE)
-          } else {
-            parentGeom <- NULL
-          }
+          if(fileExists){
 
-          # reproject new geom ----
-          # start_time <- Sys.time()
-          if(st_crs(sourceGeom) != st_crs(targetGeom)){
-            message("    Reprojecting new geometries")
-            sourceGeom <- st_transform(x = sourceGeom, crs = st_crs(targetGeom))
-          }
-          # test whether/which of the new features are already (spatially) in the target
-          # geom and stop if all of them are there already.
-          message("    Checking for exact spatial matches")
-          # start_time <- Sys.time()
-          equals <- unlist(st_equals(sourceGeom, targetGeom))
-          if(length(equals) == dim(sourceGeom)[1]){
-            message("  ! --> all features of the new geometry are already part of the target geometry !")
+            topLayer <- targetLayers$name[which.min(targetLayers$features)]
+
+            stage3Geom <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".gpkg"),
+                                  layer = tail(targetClass$label, 1),
+                                  stringsAsFactors = FALSE)
+
+            # determine the size of the sibling group
+            stage3Geom <- stage3Geom %>%
+              rowwise() %>%
+              mutate(siblings = paste0(head(str_split_1(gazName, "[.]"), -1), collapse = ".")) %>%
+              group_by(siblings) %>%
+              mutate(siblings = n()) %>%
+              ungroup()
+
+            if(st_crs(stage3Geom)$input == "Undefined Cartesian SRS"){
+              st_crs(stage3Geom) <- NA_crs_
+            }
+
+            # reproject new geom ----
+            if(st_crs(stage2Geom) != st_crs(stage3Geom)){
+              message("    Reprojecting new geometries")
+              stage2Geom <- st_transform(x = stage2Geom, crs = st_crs(stage3Geom))
+            }
+
+            # test whether/which of the new features are already (spatially) in the target
+            # geom and stop if all of them are there already.
+            message("    Checking for exact spatial matches")
+            equals <- unlist(st_equals(stage2Geom, stage3Geom))
+            if(length(equals) == dim(stage2Geom)[1]){
+              message("  ! --> all features of the new geometry are already part of the target geometry !")
+              next
+            }
+          } else {
+            message("  ! --> no previously defined geometry exists at stage 3 !")
             next
           }
 
-          # join geoms ----
-          # first make unique FIDs for each feature
-          sourceGeom <- sourceGeom %>%
-            mutate(#source_area = as.numeric(st_area(.)),
-                   sourceFID = seq_along(geom))
+          if(!topClass %in% tail(targetClass$label, 1)){
+            stage3Parent <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".gpkg"),
+                                    layer = allClasses[which(allClasses %in% tail(targetClass$label, 1)) - 1],
+                                    stringsAsFactors = FALSE) %>%
+              filter(geoID %in% gIDs & gazClass == parentClass)
+            if(simplify){
+              stage3Parent <- stage3Parent %>%
+                ms_simplify(keep = 0.5, method = "dp", keep_shapes = TRUE)
+            }
+            stage3Parent <- stage3Parent %>%
+              st_make_valid() %>%
+              mutate(s3_area = as.numeric(st_area(.))) %>%
+              rowwise() %>%
+              mutate(siblings = 0L) %>%
+              select(-match, -external)
+          }
 
-          targetGeom <- targetGeom %>%
-            mutate(target_area = as.numeric(st_area(.)),
-                   targetFID = seq_along(geom))
-
+          # determine geoms that are already ok ... ----
           message("    Joining target and source geometries")
-
-          # spatial join with the parent geom (smallest geoID), to determine
-          # whether all are within a parent
-          if(theLevel != 1){
-            minGeoID <- min(parentGeom$geoID)
-            basisParent <- parentGeom[parentGeom$geoID %in% minGeoID,]
-            in_parent <- suppressMessages(suppressWarnings(
-              sourceGeom %>%
-                st_join(basisParent, largest = TRUE)
-            ))
-
-            if(dim(sourceGeom)[1] != dim(in_parent)[1]){
-              stop("spatial join between 'sourceGeom' and 'parentGeom' has an error.")
-            }
-
-            # if there were units in sourceGeom that can't be joined with the
-            # basis, they are accidently part and need to be treated as an extra
-            # object.
-            if(any(is.na(as.numeric(in_parent$ahID)))){
-              newName <- str_split(file_name, "[.]")[[1]]
-              newName <- paste0(newName[1], "_not-", tempNation, ".", newName[2])
-              isNA <- is.na(in_parent$ahID)
-
-              message(paste0("  ! not all new units contain a valid ahID after joining with 'parentGeom', please see 'stage2/", newName, "' !"))
-              in_parent %>%
-                filter(isNA) %>%
-                select(unitCols) %>%
-                st_write(dsn = paste0(intPaths, "/adb_geometries/stage2/", newName),
-                         layer = paste0("level_", theLevel),
-                         delete_layer = TRUE,
-                         quiet = TRUE)
-              in_parent <- in_parent %>%
-                filter(!isNA)
-              sourceGeom <- sourceGeom %>%
-                filter(!isNA)
-            }
-          }
-
-          # then get the overlap with the targetGeom
-          overlap_with_target <- suppressMessages(suppressWarnings(
-            sourceGeom %>%
-              st_buffer(dist = 0)%>% # is needed sometimes to clarify "self-intersection" problems: https://gis.stackexchange.com/questions/163445/getting-topologyexception-input-geom-1-is-invalid-which-is-due-to-self-intersec
-              st_intersection(y = targetGeom) %>%
-              mutate(area = as.numeric(st_area(.))) %>%
-              arrange(sourceFID) %>%
-              group_by(sourceFID) %>%
-              mutate(overlap_area = sum(area),
-                     deviation = overlap_area/target_area*100 - 100) %>%
-              filter(area == max(area)) %>%
-              filter(row_number() == 1) %>%
-              mutate(valid = abs(deviation) < thresh) %>%
-              ungroup() %>%
-              as_tibble() %>%
-              select(-geom, -!!unitCols, -targetFID, -target_area, -area, -overlap_area, -deviation) %>%
-              arrange(sourceFID)
-          ))
-
-          # ensure that 'valid', from which the subset of valid objects will be
-          # taken, has the same number of rows as sourceGeom
-          if(dim(sourceGeom)[1] != dim(overlap_with_target)[1]){
-            # if we are at level 1, the nation may not overlap, but would still
-            # be that nation. So we assume that it is valid nevertheless.
-            if(theLevel == 1){
-              overlap_with_target <- targetGeom %>%
-                as_tibble() %>%
-                select(-target_area, -targetFID, -geom) %>%
-                mutate(valid = TRUE,
-                       sourceFID = 1)
-            } else {
-              stop("validity estimation is not compatible with sourceGeom.")
-            }
-          }
-
-          targetGeom <- targetGeom %>%
-            select(-target_area, -targetFID)
-
-          # get valid geoms that have an overlap larger than the threshold
-          sourceOverlap <- sourceGeom %>%
-            as_tibble() %>%
-            left_join(overlap_with_target, by = "sourceFID")
-
-          validUnits <- sourceOverlap %>%
-            filter(valid) %>%
+          outGeom <- stage2Geom %>%
+            filter(!is.na(id)) %>%
+            # unite(col = "gazName", all_of(allCols), sep = ".") %>%
+            unite(col = "gazName", any_of(allCols), sep = ".") %>%
             mutate(geoID = newGID,
-                   name = !!sym(unitCols[length(unitCols)])) %>%
-            select(-sourceFID, -valid, -!!unitCols) %>%
-            st_sf()
+                   gazClass = tail(allCols, 1),
+                   match = paste0(match, " [xx<>xx_", id, "]")) %>%
+            select(gazID = id, gazName, gazClass, match, external, geoID)
 
-          # get geoms that are invalid because their overlap is smaller than
-          # threshold
-          invalidUnits <- sourceOverlap %>%
-            filter(!valid) %>%
-            select(-sourceFID) %>%
-            select(-valid)
+          stage2Geom <- stage2Geom %>%
+            filter(is.na(id))
 
-          # ensure that the number of valid and invalidUnits equals to the source units
-          if(dim(sourceGeom)[1] != (dim(validUnits)[1] + dim(invalidUnits)[1])){
-            stop("! some units were lost while joining. !")
-          }
+          if(dim(stage2Geom)[1] != 0){
 
-          # 1. compare for invalid units the source name and the target name
-          # (perhaps with user interaction), if name similarity can be
-          # confirmed, take attributes from 'sourceOverlap'.
-
-          # 2. for those where a match can't be confirmed via the name, plot
-          # them on top of each other to make a visual confirmation and likewise
-          # take the attributes from 'sourceOverlap'.
-
-          # 3. all remaining are certainly not matching and thus need a new
-          # ahID. We do however know about them, that the feature they overlap
-          # most with, is the one listed in 'targetFID'. So what does that say
-          # about whether I can take the target ahID?
-
-          invalidUnits <- invalidUnits %>%
-            mutate(nation = tempNation,
-                   name = as.character(name),
-                   level = as.integer(theLevel),
-                   ahID = as.integer(ahID),
-                   geoID = as.integer(geoID)) %>%
-            mutate_at(vars(starts_with("al")), as.integer)
-
-          # unique features ----
-          # this is a test that should ideally never be true, it would mean that there
-          # was an issue with matching the nation name at some point in the pipeline.
-          if(length(unique(validUnits$al1_id)) > 1){
-            stop("The first administrative level ID is not unique.")
-          } else{
-            al1ID <- unique(validUnits$al1_id)
-          }
-
-          # make ID for already existing features ----
-          # determine how many units there are per parent unit
-          message("    Reconstructing IDs")
-          if(theLevel > 1){
-            prevUnits <- targetGeom %>%
-              as_tibble() %>%
-              select(starts_with("al"), -geom) %>%
-              group_by(!!sym(paste0("al", theLevel-1, "_id"))) %>%
-              mutate(prevUnits = as.numeric(max(!!sym(paste0("al", theLevel, "_id"))))) %>%
-              ungroup() %>%
-              select(-!!sym(paste0("al", theLevel, "_id"))) %>%
-              unique()
-
-            # also merge the parent units into this, in case there are already
-            # additional units availables
-            prevUnits <- parentGeom %>%
-              as_tibble() %>%
-              select(starts_with("al")) %>%
-              unique() %>%
-              left_join(prevUnits) %>%
-              mutate(prevUnits = if_else(is.na(prevUnits), 0, prevUnits))
-          } else{
-            prevUnits <- tibble(!!natCol := tempNation, prevUnits = 0)
-          }
-
-          # determine IDs from the parent level to be able to assign them to units
-          # at the current level that can't be matched with the spatial join above
-          #
-          # via given names (which only makes sense if the number of unitCols is
-          # the same as theLevel)
-          if(length(unitCols) == theLevel){
-            if(theLevel == 1){
-              prevIDs <- tibble(!!natCol := tempNation, al1_id = nationID)
-            # } else if(theLevel == 2){
-            #   prevIDs <- invalidUnits %>%  #for sunday: check this at level  for estonia
-            #     as_tibble() %>%
-            #     select(-nation, -name, -ahID, -geoID, -level, -starts_with("al"), -geom) %>%
-            #     mutate_if(is.character, tolower) %>%
-            #     mutate(al1_id = nationID)
-            } else {
-              alCols <- in_parent %>%
-                as_tibble() %>%
-                select(starts_with("al")) %>%
-                colnames()
-              # prevIDs <- parentGeom %>%
-              #   as_tibble() %>%
-              #   rename(!!natCol := nation, !!unitCols[length(unitCols)-1] := name) %>%
-              #   select(-geoID, -geom, -level, -ahID) %>%
-              #   filter_at(vars(!!unitCols[-length(unitCols)]), any_vars(!duplicated(.))) %>%
-              #   unique()
-              prevIDs <- in_parent %>%
-                as_tibble() %>%
-                select(all_of(unitCols), all_of(alCols))
-            }
-          } else {
-            # if that is not the case, we need to fall back to finding parents IDs
-            # via spatial overlap.
-            if(theLevel == 1){
-              prevIDs <- tibble(!!natCol := tempNation, al1_id = nationID)
-            } else {
-
-              matchGeoms <- invalidUnits %>%
-                select(unitCols, geom) %>%
-                # mutate_if(is.character, tolower) %>%
-                st_sf()
-
-              if(dim(matchGeoms)[1] != 0){
-                message("    Determining parent IDs spatially")
-                prevIDs <- suppressMessages(suppressWarnings(
-                  matchGeoms %>%
-                    mutate(overlap_area = st_area(.)) %>%
-                    st_intersection(y = parentGeom) %>%
-                    mutate(overlap = as.numeric(st_area(.)/overlap_area*100)) %>%
-                    as_tibble() %>%
-                    group_by(.dots = unitCols, overlap_area) %>%
-                    filter(overlap == max(overlap)) %>%
-                    select(-geoID) %>%
-                    unique() %>%
-                    ungroup() %>%
-                    select(-overlap_area, -nation, -name, -level, -ahID, -overlap, -geom) %>%
-                    unique()
-                ))
-              } else {
-                if(theLevel == 2){
-                  prevIDs <- tibble(!!natCol := tempNation, al1_id = nationID)
-                }
+            if(fileExists){
+              message("    -> Simplifying geometries")
+              stage3GeomSimple <- stage3Geom
+              if(simplify){
+                stage3GeomSimple <- stage3GeomSimple %>%
+                  ms_simplify(keep = 0.5, method = "dp", keep_shapes = TRUE)
               }
+              stage3GeomSimple <- stage3GeomSimple %>%
+                st_make_valid() %>%
+                mutate(s3_area = as.numeric(st_area(.))) %>%
+                bind_cols(s3_geom = st_geometry(stage3Geom))
 
+              if(priority == "ontology"){
+                # in this case, names are matched first and for the remaining territories a spatial match is used
+                stage3GeomSimple <- stage3GeomSimple %>%
+                  filter(!gazID %in% outGeom$gazID) %>%
+                  select(-match, -external)
+              } else if(priority %in% "spatial"){
+                # in this case, names are not matched at all and instead matches are determined by spatial overlap entirely
+                outGeom <- outGeom %>%
+                  slice(-c(1:dim(outGeom)[1]))
+                stage2Geom <- stage2Geom
+                stage3GeomSimple <- stage3GeomSimple %>%
+                  select(-match, -external)
+              }# else if(priority == "both"){
+              # in this case, both methods are employed. Conflicts between the methods need to be resolved or documented
+              #}
 
             }
-          }
-          # prevIDs <- prevIDs %>%
-            # mutate_if(is.character, tolower)
 
-
-          # if prevUnits is NA, fill it with 0
-          if(dim(prevUnits)[1] == 1 & all(is.na(prevUnits$prevUnits))){
-            prevUnits$al1_id <- prevIDs$al1_id
-            prevUnits$prevUnits <- 0
-          }
-
-          # make ID for new features ----
-          if(theLevel == 1){
-            groupLevel <- 2
-          } else {
-            groupLevel <- theLevel
-          }
-          suppressMessages(
-            newUnits <- invalidUnits %>%
-              as_tibble() %>%
-              select(-ahID, -geoID, -level, -name, -starts_with("al")) %>%
-              # mutate_if(is.character, tolower) %>%
-              left_join(prevIDs) %>%
-              mutate(al1_id = {if (any(is.na(al1_id))) nationID else al1_id}) %>%
-              left_join(prevUnits) %>%
-              filter(!duplicated(.)) %>%
-              group_by(across(all_of(paste0("al", groupLevel-1, "_id")))) %>%
-              mutate(nation = tempNation,
-                     name = {if (n() > 0) !!sym(unitCols[length(unitCols)]) else ""},
-                     level = theLevel,
-                     tempID = seq_along(!!sym(unitCols[length(unitCols)]))) %>%
-              ungroup() %>%
-              mutate(!!paste0("al", theLevel, "_id") := {if (theLevel == 1) nationID else tempID + prevUnits}) %>%
-              ungroup() %>%
-              st_sf()
-          )
-
-          # in case 'joinedGeom' contains a nation that did not properly match, also
-          # al1_id will have been reconstructed by the above code. As we know that
-          # this ID does not change, we can re-assign it from 'targetGeom'.
-          if(theLevel == 1 & dim(newUnits)[1] == 1){
-            if(newUnits$al1_id != unique(targetGeom$al1_id)){
-              newUnits$al1_id <- unique(targetGeom$al1_id)
+            stage2GeomSimple <- stage2Geom
+            if(simplify){
+              stage2GeomSimple <- stage2GeomSimple %>%
+                ms_simplify(keep = 0.5, method = "dp", keep_shapes = TRUE)
             }
-          }
+            stage2GeomSimple <- stage2GeomSimple %>%
+              st_make_valid() %>%
+              mutate(s2_area = as.numeric(st_area(.))) %>%
+              bind_cols(s2_geom = st_geometry(stage2Geom))
 
-          # reconstruct 'ahID'
-          newUnits <- newUnits %>%
-            mutate(ahID = paste0({if("al1_id" %in% names(.)) formatC(al1_id, width = 3, flag = 0) else ""},
-                                 {if("al2_id" %in% names(.)) formatC(al2_id, width = 3, flag = 0) else ""},
-                                 {if("al3_id" %in% names(.)) formatC(al3_id, width = 3, flag = 0) else ""},
-                                 {if("al4_id" %in% names(.)) formatC(al4_id, width = 3, flag = 0) else ""},
-                                 {if("al5_id" %in% names(.)) formatC(al5_id, width = 3, flag = 0) else ""},
-                                 {if("al6_id" %in% names(.)) formatC(al6_id, width = 3, flag = 0) else ""}),
-                   geoID = newGID) %>%
-            select(-prevUnits, -tempID, -!!unitCols)
+            if(fileExists){
+              # ... and then carrying out an intersection
+              message("    -> Calculating intersection")
+              pb <- progress_bar$new(format = "[:bar] :current/:total (:percent)", total = dim(stage3GeomSimple)[1])
+              geomIntersections <- st_intersects(x = stage3GeomSimple, y = stage2GeomSimple)
+              overlapGeom <- suppressWarnings(
+                map_dfr(1:dim(stage3GeomSimple)[1], function(ix){
+                  pb$tick()
+                  st_intersection(x = stage3GeomSimple[ix,], y = stage2GeomSimple[geomIntersections[[ix]],])
+                })) %>%
+                  st_make_valid() %>%
+                  mutate(intersect_area = as.numeric(st_area(.)),
+                         s3_prop = round(intersect_area/s3_area*100, 5),
+                         s2_prop = round(intersect_area/s2_area*100, 5)) %>%
+                  arrange(gazID)
 
-          if(any(is.na(as.numeric(newUnits$ahID)))){
-            stop("! not all new units were successfully assigned a valid ahID. !")
-          }
+              message("    -> Determining matches")
+              tempGeom <- overlapGeom %>%
+                mutate(outString = paste0(round(s2_prop), "<>", round(s3_prop)),
+                       outMatch = if_else(s2_prop >= (100 - thresh),
+                                          if_else(s3_prop >= (100 - thresh),
+                                                  "close",
+                                                  "narrower"),
+                                          if_else(s2_prop < (100 - thresh) & s2_prop >= thresh,
+                                                  "broader",
+                                                  if_else(s2_prop < thresh,
+                                                          if_else(s3_prop >= (100 - thresh),
+                                                                  "broader",
+                                                                  if_else(s3_prop >= thresh,
+                                                                          "reassign",
+                                                                          "ignore")),
+                                                          "ignore")))) %>%
+                filter(outMatch != "ignore") %>%
+                group_by(gazName) %>%
+                mutate(s3_overlap = n()) %>%
+                arrange(desc(s3_prop)) %>%
+                filter(outMatch != "reassign" | row_number() == 1L) %>%
+                arrange(gazID) %>%
+                ungroup() %>%
+                group_by(external) %>%
+                mutate(s2_overlap = n()) %>%
+                ungroup() %>%
+                mutate(outMatch = if_else((outMatch == "narrower" & s2_overlap == 1L & s3_overlap == 1L) | outMatch == "close",
+                                          "close",
+                                          if_else(outMatch == "reassign", "broader", outMatch)),
+                       match = paste0(outMatch, " [", outString, "_", gazID, "]"),
+                       new_name = if_else((s2_overlap != 1L | s3_overlap != 1L), TRUE, FALSE))
 
-          # combine old and new units and rebuild columns
-          outGeom <- validUnits %>%
-            select(nation, name, level, ahID, geoID, everything())
-          if(!dim(outGeom)[1] == 0 | !dim(newUnits)[1] == 0){
+              message("    -> Building new IDs")
+              tempGeom <- tempGeom %>%
+                rowwise() %>%
+                mutate(gazID = if_else((s2_overlap != 1L | s3_overlap != 1L), paste0(head(str_split_1(gazID, "[.]"), -1), collapse = "."), gazID),
+                       gazName = if_else((s2_overlap != 1L | s3_overlap != 1L), paste0(head(str_split_1(gazName, "[.]"), -1), collapse = "."), gazName)) %>%
+                group_by(external, s2_geom, gazID, gazName, new_name, siblings) %>%
+                summarise(match = paste0(match, collapse = " | ")) %>%
+                ungroup()
+
+            } else {
+              tempGeom <- stage2Geom %>%
+                rename(s2_geom = geom) %>%
+                mutate(new_name = TRUE,
+                       match = "exact")
+            }
+
+            # in case new geometries overlap at the parent administrative level, get these information in there and assign the ID of that parent, where the largest overlap exists
+            if(dim(tempGeom)[1] != length(unique(tempGeom$external)) | (priority == "spatial" & !fileExists)){
+
+              message("    -> Adapting IDs to parent level")
+              pb <- progress_bar$new(format = "[:bar] :current/:total (:percent)", total = dim(stage3Parent)[1])
+              geomIntersections <- st_intersects(x = stage3Parent, y = stage2GeomSimple)
+              parentOverlap <-  suppressWarnings(
+                map_dfr(1:dim(stage3Parent)[1], function(ix){
+                  pb$tick()
+                  st_intersection(x = stage3Parent[ix,], y = stage2GeomSimple[geomIntersections[[ix]],])
+                })) %>%
+                mutate(intersect_area = as.numeric(st_area(.)),
+                       s3_prop = round(intersect_area/s3_area*100, 5),
+                       s2_prop = round(intersect_area/s2_area*100, 5)) %>%
+                group_by(external) %>%
+                arrange(s3_prop) %>%
+                filter(row_number() == 1) %>%
+                select(gazID, gazName, external) %>%
+                # select(gazID, gazName, external, siblings) %>%
+                st_drop_geometry()
+
+              tempGeom_clean <- tempGeom %>%
+                group_by(external) %>%
+                filter(n() == 1)
+
+              tempGeom_dups <- tempGeom %>%
+                group_by(external) %>%
+                filter(n() > 1)
+
+              if(fileExists){
+                tempGeom_dups <- tempGeom_dups %>%
+                  rename(gazID2 = gazID) %>%
+                  select(-gazName)
+              }
+              tempGeom <- tempGeom_dups %>%
+                left_join(parentOverlap, by = "external") %>%
+                group_by(external) %>%
+                separate_rows(match, sep = " \\| ") %>%
+                mutate(siblings = if_else(gazID2 == gazID, siblings, NA_integer_),
+                       siblings = first(na.omit(siblings))) %>%
+                ungroup() %>%
+                group_by(external, s2_geom, new_name, gazID, gazName, siblings) %>%
+                summarise(match = paste0(match, collapse = " | ")) %>%
+                bind_rows(tempGeom_clean)
+
+            }
+
+            tempGeom <- tempGeom %>%
+              separate_wider_delim(cols = external, delim = "_-_-", names = "external", too_many = "drop") %>%
+              group_by(gazName) %>%
+              mutate(rn = row_number()) %>%
+              ungroup() %>%
+              mutate(tempID = str_pad(string = rn + siblings, width = 3, pad = 0),
+                     thisName = str_to_title(external),
+                     gazID = if_else(!new_name, gazID, paste0(gazID, ".", tempID)),
+                     gazName = if_else(!new_name, gazName, paste0(gazName, ".", thisName)),
+                     geoID = newGID,
+                     gazClass = tail(allCols, 1)) %>%
+              select(gazID, gazName, gazClass, match, external, geoID, geom = s2_geom)
+
+            if(!fileExists){
+              tempGeom <- tempGeom %>%
+                mutate(match = paste0("close [xx<>xx_", gazID, "]"))
+            }
+
             outGeom <- outGeom %>%
-              rbind(newUnits)
+              bind_rows(tempGeom)
+
+          } else {
+            message("    -> All ontology matches are valid")
           }
 
-          outGeom <- targetGeom %>%
-            rbind(outGeom) %>%
-            arrange(ahID)
+          # update ontology, but only if we are not handling the topmost class, because in that case it has been harmonised with the gazetteer already
+          if(unique(outGeom$gazClass) != topClass){
+
+            message("    -> Updating ontology")
+            newOnto <- outGeom %>%
+              st_drop_geometry() %>%
+              rowwise() %>%
+              mutate(parentID = paste0(head(str_split_1(gazID, "[.]"), -1), collapse = ".")) %>%
+              separate_rows("match", sep = " \\| ") %>%
+              mutate(match = str_replace_all(match, "\\[|\\]", "")) %>%
+              separate(col = match, into = c("match", "amount"), sep = " ", fill = "right") %>%
+              separate(col = amount, into = c("amount", "target"), sep = "_", fill = "right") %>%
+              separate(col = amount, into = c("target_overlap", "source_overlap"), sep = "<>", fill = "right") %>%
+              mutate(target_overlap = as.numeric(target_overlap),
+                     source_overlap = as.numeric(source_overlap))
+
+            # 1. include new hamonised concepts in the ontology, in case it deviates more than 'thresh'
+            newConcepts <- newOnto %>%
+              filter(target_overlap < (100-thresh) | source_overlap < (100-thresh))
+            newConcepts <- newConcepts %>%
+              select(id = parentID, gazClass, external) %>%
+              left_join(get_concept(id = newConcepts$parentID, ontology = gazPath), by = "id") %>%
+              select(external, gazClass, id, label, class) %>%
+              distinct()
+
+            if(dim(newConcepts)[1] != 0){
+
+              new_concept(new = newConcepts$external,
+                          broader = newConcepts %>% select(id, label, class),
+                          class = newConcepts$gazClass,
+                          ontology =  gazPath)
+
+            }
+
+            # 2. define mappings of the new concepts with harmonised concepts
+            harmOnto <- get_concept(id = newOnto$target, ontology = gazPath)
+
+            if(any(newOnto$match == "close")){
+              newClose <- newOnto %>%
+                filter(match == "close")
+              new_mapping(new =  newClose$external,
+                          target = harmOnto %>% filter(id %in% newClose$target) %>% select(id, label, class, has_broader),
+                          source = dSeries, match = "close", certainty = 3, type = "concept", ontology = gazPath)
+            }
+
+            if(any(newOnto$match == "narrower")){
+              newNarrower <- newOnto %>%
+                filter(match == "narrower")
+              oldNarrower <- harmOnto %>%
+                filter(id %in% newNarrower$target) %>%
+                select(id, label, class, has_broader) %>%
+                left_join(newNarrower, by = c("id" = "target")) %>%
+                select(id, label, class, has_broader)
+              new_mapping(new = newNarrower$external,
+                          target = oldNarrower,
+                          source = dSeries, match = "narrower", certainty = 3, type = "concept", ontology = gazPath)
+            }
+
+            if(any(newOnto$match == "broader")){
+              newBroader <- newOnto %>%
+                filter(match == "broader")
+              oldBroader <- harmOnto %>%
+                filter(id %in% newBroader$target) %>%
+                select(id, label, class, has_broader) %>%
+                right_join(newBroader, ., by = c("target" = "id")) %>%
+                select(id = target, label, class, has_broader)
+              new_mapping(new = newBroader$external,
+                          target = oldBroader,
+                          source = dSeries, match = "broader", certainty = 3, type = "concept", ontology = gazPath)
+            }
+          }
+
+          if(fileExists){
+
+            outGeom <- stage3Geom %>%
+              select(-siblings) %>%
+              bind_rows(outGeom) %>%
+              arrange(gazID, geoID)
+
+          }
 
         } else {
 
-          # check whether a gadm geometry has been registered previously
-          if(!grepl(pattern = "gadm", x = lut$source_file)){
-            message(paste0("  ! I didn't find any geometries, please provide first the GADM level ", theLevel, " data product !"))
-            next
-          }
-          message("    Creating new basis dataset at level ", theLevel, ".")
+          message("    Creating new basis dataset for class ", tail(targetClass$label, 1), ".")
 
-          # get all gadm inventory entries
-          gadmIDs <- inv_geometries$geoID[grep(pattern = "gadm", x = inv_geometries$source_file)]
-
-          # get ahID and other information from the parent layer, if it is the first
-          # level, just set up new information
-          if(theLevel > 1){
-            if(theLevel == 2){
-              parentIDs <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
-                                   layer = sort(targetLayers$name)[theLevel-1],
-                                   stringsAsFactors = FALSE) %>%
-                as_tibble() %>%
-                filter(geoID %in% gadmIDs) %>%
-                rename(NAME_0 = nation) %>%
-                select(-geom, -name)
-            } else {
-              parentIDs <- read_sf(dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".gpkg"),
-                                   layer = sort(targetLayers$name)[theLevel-1],
-                                   stringsAsFactors = FALSE) %>%
-                as_tibble() %>%
-                filter(geoID %in% gadmIDs) %>%
-                rename(NAME_0 = nation, !!unitCols[length(unitCols)-1] := name) %>%
-                select(-geom)
-            }
-          } else {
-            parentIDs <- tibble(NAME_0 = tempNation, NAME_1 = tempNation)
-            sourceGeom$NAME_1 <- tempNation
-            orig_units <- unitCols
-            unitCols <- c("NAME_0", "NAME_1")
-          }
-
-          # for joining the geom(s) to modified objects
-          # matchGeom <- sourceGeom %>%
-          #   select(!!unitCols) # %>%
-          # mutate(NAME_0 = tolower(NAME_0)) %>%
-          # mutate_if(is.character, tolower)
-
-          # join the object with the parent ID to derive IDs of this level that are
-          # actual children of the correct parent
-          # suppressMessages(joinedGeom <- sourceGeom %>%
-          #                    # as_tibble() %>%
-          #                    # select(-geom)  %>%
-          #                    # mutate_if(is.character, tolower) %>%
-          #                    # mutate(NAME_0 = tolower(NAME_0)) %>%
-          #                    left_join(parentIDs)# %>%
-                             # select(-level, -geoID)# %>%
-                             # left_join(matchGeom) %>%
-                             # st_sf()
-                             # )
-
-          xyz <- unitCols[!seq_along(unitCols) %in% c(1, length(unitCols))]
-
-          # derive required information
           outGeom <- suppressMessages(
-            sourceGeom %>%
-              left_join(parentIDs) %>%
-              group_by(!!as.symbol(unitCols[length(unitCols)-1])) %>%
-              mutate(level = theLevel,
-                     !!paste0("al", theLevel, "_id") := {if(theLevel == 1) nationID else seq_along(NAME_0)},
-                     geoID = newGID
-              ) %>%
-              mutate(ahID = paste0({if("al1_id" %in% names(.)) formatC(al1_id, width = 3, flag = 0) else ""},
-                                   {if("al2_id" %in% names(.)) formatC(al2_id, width = 3, flag = 0) else ""},
-                                   {if("al3_id" %in% names(.)) formatC(al3_id, width = 3, flag = 0) else ""},
-                                   {if("al4_id" %in% names(.)) formatC(al4_id, width = 3, flag = 0) else ""},
-                                   {if("al5_id" %in% names(.)) formatC(al5_id, width = 3, flag = 0) else ""},
-                                   {if("al6_id" %in% names(.)) formatC(al6_id, width = 3, flag = 0) else ""})
-              ) %>%
-              ungroup() %>%
-              select(nation = NAME_0, name = !!unitCols[length(unitCols)], level, ahID, geoID, everything(), -all_of(xyz)) %>%
-              mutate(name = name))
+            stage2Geom %>%
+              unite(col = "gazName", all_of(unitCols), sep = ".") %>%
+              mutate(gazClass = tail(targetClass$label, 1),
+                     geoID = newGID) %>%
+              select(gazID = id, gazName, gazClass, match, external, geoID))
 
-          if(theLevel == 1){
-            unitCols <- orig_units
-          }
         }
 
         if(update){
           # in case the user wants to update, output the simple feature
           if(outType != "rds"){
             st_write(obj = outGeom,
-                     dsn = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".", outType),
-                     layer = paste0("level_", theLevel),
-                     delete_layer = TRUE,
-                     append = TRUE,
+                     dsn = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".", outType),
+                     layer = tail(targetClass$label, 1),
+                     append = FALSE,
                      quiet = TRUE)
           } else {
-            saveRDS(object = outGeom, file = paste0(intPaths, "/adb_geometries/stage3/", tempNation, ".rds"))
+            saveRDS(object = outGeom, file = paste0(intPaths, "/adb_geometries/stage3/", tempUnit, ".rds"))
           }
-
         }
-
       }
     }
 
@@ -726,7 +727,7 @@ normGeometry <- function(input = NULL, ..., thresh = 10, outType = "gpkg",
       file.remove(paste0(firstStage, "/", file_name))
     }
 
-    outLut <- bind_rows(outLut, lut)
+    outLut <- bind_rows(outLut, geom_meta)
 
   }
 

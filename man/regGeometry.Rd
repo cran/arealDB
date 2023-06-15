@@ -5,12 +5,11 @@
 \title{Register a new geometry entry}
 \usage{
 regGeometry(
-  nation = NULL,
+  ...,
   subset = NULL,
   gSeries = NULL,
-  level = NULL,
+  label = NULL,
   layer = NULL,
-  nameCol = NULL,
   archive = NULL,
   archiveLink = NULL,
   nextUpdate = NULL,
@@ -21,8 +20,10 @@ regGeometry(
 )
 }
 \arguments{
-\item{nation}{[\code{character(1)}]\cr either the nation name or the column
-of the file's attribute table that contains nations.}
+\item{...}{[\code{character(1)}]\cr optional named argument selecting the
+main territory into which this geometry is nested. The name of this must be
+a class of the gazetteer and the value must be one of the territory names
+of that class, e.g. \emph{nation = "Estonia"}.}
 
 \item{subset}{[\code{character(1)}]\cr optional argument to specify which
 subset the file contains. This could be a subset of territorial units (e.g.
@@ -31,15 +32,13 @@ only one municipality) or of a target variable.}
 \item{gSeries}{[\code{character(1)}]\cr the name of the geometry dataseries
 (see \code{\link{regDataseries}}).}
 
-\item{level}{[\code{integerish(1)}]\cr the administrative level at which the
-geometry is recorded.}
+\item{label}{[\code{list(.)}]\cr list of as many columns as there are in
+common in the ontology and this geometry. Must be of the form
+\code{list(class = columnName)}, with 'class' as the class of the ontology
+corresponding to the respective column name in the geometry.}
 
 \item{layer}{[\code{character}]\cr the name of the file's layer from which
 the geometry should be created (if applicable).}
-
-\item{nameCol}{[\code{character(.)}]\cr the columns in which the names of
-administrative units are to be found, delimited by \code{"|"}; see
-Examples.}
 
 \item{archive}{[\code{character(1)}]\cr the original file (perhaps a *.zip)
 from which the geometry emerges.}
@@ -75,41 +74,45 @@ geospatial database.
 }
 \details{
 When processing geometries to which areal data shall be linked,
-  carry out the following steps: \enumerate{ \item Determine the
-  \code{nation}, a \code{subset} (if applicable), the dataseries of the
-  geometry and the administrative \code{level}, and provide them as arguments
-  to this function. \item Run the function. \item Export the shapefile with
-  the following properties: \itemize{ \item Format: GeoPackage \item File
-  name: What is provided as message by this function \item CRS: EPSG:4326 -
-  WGS 84 \item make sure that 'all fields are exported'} \item Confirm that
-  you have saved the file.}
+  carry out the following steps: \enumerate{ \item Determine the main
+  territory (such as a nation, or any other polygon), a \code{subset} (if
+  applicable), the dataseries of the geometry and the ontology \code{label},
+  and provide them as arguments to this function. \item Run the function.
+  \item Export the shapefile with the following properties: \itemize{ \item
+  Format: GeoPackage \item File name: What is provided as message by this
+  function \item CRS: EPSG:4326 - WGS 84 \item make sure that 'all fields are
+  exported'} \item Confirm that you have saved the file.}
 }
 \examples{
-# build the example database
-makeExampleDB(until = "regDataseries")
+if(dev.interactive()){
+  # build the example database
+  makeExampleDB(until = "regDataseries", path = tempdir())
 
-# The GADM dataset comes as *.zip archive
-regGeometry(nation = "NAME_0",
-            gSeries = "gadm",
-            level = 1,
-            layer = "example_geom1",
-            nameCol = "NAME_0",
-            archive = "example_geom.7z|example_geom1.gpkg",
-            archiveLink = "https://gadm.org/",
-            nextUpdate = "2019-10-01",
-            updateFrequency = "quarterly",
-            update = TRUE)
+  # The GADM dataset comes as *.7z archive
+  regGeometry(gSeries = "gadm",
+              label = list(al1 = "NAME_0"),
+              layer = "example_geom1",
+              archive = "example_geom.7z|example_geom1.gpkg",
+              archiveLink = "https://gadm.org/",
+              nextUpdate = "2019-10-01",
+              updateFrequency = "quarterly",
+              update = TRUE)
 
-# The second administrative level in GADM contains names in the columns
-# NAME_0 and NAME_1
-regGeometry(nation = "NAME_0",
-            gSeries = "gadm",
-            level = 2,
-            layer = "example_geom2",
-            nameCol = "NAME_0|NAME_1",
-            archive = "example_geom.7z|example_geom2.gpkg",
-            archiveLink = "https://gadm.org/",
-            nextUpdate = "2019-10-01",
-            updateFrequency = "quarterly",
-            update = TRUE)
+  # The second administrative level in GADM contains names in the columns
+  # NAME_0 and NAME_1
+  regGeometry(gSeries = "gadm",
+              label = list(al1 = "NAME_0", al2 = "NAME_1"),
+              layer = "example_geom2",
+              archive = "example_geom.7z|example_geom2.gpkg",
+              archiveLink = "https://gadm.org/",
+              nextUpdate = "2019-10-01",
+              updateFrequency = "quarterly",
+              update = TRUE)
 }
+}
+\seealso{
+Other register functions: 
+\code{\link{regDataseries}()},
+\code{\link{regTable}()}
+}
+\concept{register functions}

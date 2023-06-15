@@ -1,48 +1,54 @@
 #' Build an example database
 #'
-#' This function helps setting up an example database up until a certain point.
-#' @param until [\code{character(1)}]\cr The database building step in terms of
-#'   the function names until which the example database shall be built, one of
-#'   \code{"setPath"}, \code{"setVariables"}, \code{"regDataseries"},
-#'   \code{"regGeometry"}, \code{"regTable"}, \code{"normGeometry"} or
-#'   \code{"normTable"}.
+#' This function helps setting up an example database up until a certain step.
 #' @param path [\code{character(1)}]\cr The database gets created by default in
 #'   tempdir(), but if you want it in a particular location, specify that in
 #'   this argument.
+#' @param until [\code{character(1)}]\cr The database building step in terms of
+#'   the function names until which the example database shall be built, one of
+#'   \code{"start_arealDB"}, \code{"regDataseries"}, \code{"regGeometry"},
+#'   \code{"regTable"}, \code{"normGeometry"} or \code{"normTable"}.
 #' @param verbose [\code{logical(1)}]\cr be verbose about building the example
 #'   database (default \code{FALSE}).
+#' @details Setting up a database with an R-based tool can appear to be
+#'   cumbersome and too complex and thus intimidating. By creating an example
+#'   database, this functions allows interested users to learn step by step how
+#'   to build a database of areal data. Moreover, all functions in this package
+#'   contain verbose information and ask for information that would be missing
+#'   or lead to an inconsistent database, before a failure renders hours of work
+#'   useless.
 #' @return No return value, called for the side effect of creating an example
 #'   database at the specified \code{path}.
 #' @examples
-#' # to merely register a set of files
-#' makeExampleDB(until = "regTable")
-#'
+#' if(dev.interactive()){
 #' # to build the full example database
-#' makeExampleDB()
+#' makeExampleDB(path = paste0(tempdir(), "/newDB"))
 #'
-#' @importFrom checkmate assertChoice assertDirectoryExists
+#' # to make the example database until a certain step
+#' makeExampleDB(path = paste0(tempdir(), "/newDB"), until = "regDataseries")
+#'
+#' }
+#' @importFrom checkmate assertChoice testDirectoryExists
 #' @importFrom readr read_csv
 #' @importFrom tabshiftr setFormat setIDVar setObsVar
 #' @export
 
-makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
+makeExampleDB <- function(path = NULL, until = NULL, verbose = FALSE){
 
   inPath <- system.file("test_datasets", package = "arealDB", mustWork = TRUE)
-  steps <- c("setPath", "setVariables", "regDataseries", "regGeometry", "regTable", "normGeometry", "normTable")
-  if(is.null(until)){
+  steps <- c("start_arealDB", "regDataseries", "regGeometry", "regTable", "normGeometry", "normTable")
+  if (is.null(until)) {
     until <- "normTable"
   }
   assertChoice(x = until, choices = steps)
 
-  theSteps <- steps[1:which(steps %in% until)]
-
-  if(is.null(path)){
-    path <- paste0(tempdir(), "/newDB")
-  }
-
-  if(file.exists(path)){
+  if(testDirectoryExists(path)){
     unlink(path, recursive = TRUE)
   }
+
+  gazPath <- paste0(path, "/territories.rds")
+  ontoPath <- list(commodity = paste0(path, "/ontology.rds"))
+  theSteps <- steps[1:which(steps %in% until)]
 
   # enable testing, this inserts values to readLine() calls that would otherwise
   # not be answered by the test
@@ -50,45 +56,44 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
   on.exit(options(oldOptions))
   options(adb_testing = TRUE)
 
-  if(any(theSteps %in% "setPath")){
-
-    setPath(root = path)
-    assertDirectoryExists(x = path, access = "rw")
+  if (any(theSteps %in% "start_arealDB")) {
+    start_arealDB(root = path, gazetteer = gazPath, top = "al1", ontology = ontoPath)
   }
 
+  # load input data
   file.copy(from = paste0(inPath, "/example_geom.7z"),
             to = paste0(path, "/adb_geometries/stage1/example_geom.7z"))
-  file.copy(from = paste0(inPath, "/example_geom1.gpkg"),
-            to = paste0(path, "/adb_geometries/stage2/_1__gadm.gpkg"))
-  file.copy(from = paste0(inPath, "/example_geom2.gpkg"),
-            to = paste0(path, "/adb_geometries/stage2/_2__gadm.gpkg"))
-  file.copy(from = paste0(inPath, "/example_geom3.gpkg"),
-            to = paste0(path, "/adb_geometries/stage2/_3__gadm.gpkg"))
-  file.copy(from = paste0(inPath, "/example_geom4.gpkg"),
-            to = paste0(path, "/adb_geometries/stage2/_3__madeUp.gpkg"))
-
   file.copy(from = paste0(inPath, "/example_table.7z"),
             to = paste0(path, "/adb_tables/stage1/example_table.7z"))
-  file.copy(from = paste0(inPath, "/example_table1.csv"),
-            to = paste0(path, "/adb_tables/stage2/est_1_barleyMaize_1990_2017_madeUp.csv"))
-  file.copy(from = paste0(inPath, "/example_table2.csv"),
-            to = paste0(path, "/adb_tables/stage2/est_2_barleyMaize_1990_2017_madeUp.csv"))
 
+  # load geometries
+  file.copy(from = paste0(inPath, "/example_geom1.gpkg"),
+            to = paste0(path, "/adb_geometries/stage2/_al1__gadm.gpkg"))
+  file.copy(from = paste0(inPath, "/example_geom2.gpkg"),
+            to = paste0(path, "/adb_geometries/stage2/_al2__gadm.gpkg"))
+  file.copy(from = paste0(inPath, "/example_geom3.gpkg"),
+            to = paste0(path, "/adb_geometries/stage2/_al3__gadm.gpkg"))
+  file.copy(from = paste0(inPath, "/example_geom4.gpkg"),
+            to = paste0(path, "/adb_geometries/stage2/_al3__madeUp.gpkg"))
+
+  # load tables (and schema)
   file.copy(from = paste0(inPath, "/example_schema.rds"),
-            to = paste0(path, "/adb_tables/meta/schemas/example_schema.rds"))
+            to = paste0(path, "/meta/schemas/example_schema.rds"))
+  file.copy(from = paste0(inPath, "/example_table1.csv"),
+            to = paste0(path, "/adb_tables/stage2/_al1_barleyMaize_1990_2017_madeUp.csv"))
+  file.copy(from = paste0(inPath, "/example_table2.csv"),
+            to = paste0(path, "/adb_tables/stage2/aNation_al2_barleyMaize_1990_2017_madeUp.csv"))
+
+  # load gazetteer
+  file.copy(from = paste0(inPath, "/territories.rds"),
+            to = gazPath)
+  file.copy(from = paste0(inPath, "/match_madeUp.csv"),
+            to = paste0(path, "/meta/territories/match_madeUp.csv"))
+  file.copy(from = paste0(inPath, "/match_gadm.csv"),
+            to = paste0(path, "/meta/territories/match_gadm.csv"))
 
 
-  if(any(theSteps %in% "setVariables")){
-    territories <- read_csv(file = paste0(inPath, "/id_units.csv"), col_types = "iccc")
-    setVariables(input = territories, variable = "territories",
-                 pid = "anID", origin = "origin", target = "names")
-
-    comm <- read_csv(file = paste0(inPath, "/id_commodities.csv"), col_types = "iccc")
-    setVariables(input = comm, variable = "commodities",
-                 pid = "faoID", target = "simpleName")
-  }
-
-  if(any(theSteps %in% "regDataseries")){
+  if (any(theSteps %in% "regDataseries")) {
     regDataseries(name = "gadm",
                   description = "Database of Global Administrative Areas",
                   homepage = "https://gadm.org/index.html",
@@ -104,44 +109,36 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
 
   if(any(theSteps %in% "regGeometry")){
 
-    regGeometry(nation = "NAME_0",
-                gSeries = "gadm",
-                level = 1,
+    regGeometry(gSeries = "gadm",
+                label = list(al1 = "NAME_0"),
                 layer = "example_geom1",
-                nameCol = "NAME_0",
                 archive = "example_geom.7z|example_geom1.gpkg",
                 archiveLink = "https://gadm.org/",
                 nextUpdate = "2019-10-01",
                 updateFrequency = "quarterly",
                 update = TRUE)
 
-    regGeometry(nation = "NAME_0",
-                gSeries = "gadm",
-                level = 2,
+    regGeometry(gSeries = "gadm",
+                label = list(al1 = "NAME_0", al2 = "NAME_1"),
                 layer = "example_geom2",
-                nameCol = "NAME_0|NAME_1",
                 archive = "example_geom.7z|example_geom2.gpkg",
                 archiveLink = "https://gadm.org/",
                 nextUpdate = "2019-10-01",
                 updateFrequency = "quarterly",
                 update = TRUE)
 
-    regGeometry(nation = "NAME_0",
-                gSeries = "gadm",
-                level = 3,
+    regGeometry(gSeries = "gadm",
+                label = list(al1 = "NAME_0", al2 = "NAME_1", al3 = "NAME_2"),
                 layer = "example_geom3",
-                nameCol = "NAME_0|NAME_1|NAME_2",
                 archive = "example_geom.7z|example_geom3.gpkg",
                 archiveLink = "https://gadm.org/",
                 nextUpdate = "2019-10-01",
                 updateFrequency = "quarterly",
                 update = TRUE)
 
-    regGeometry(nation = "NAME_0",
-                gSeries = "madeUp",
-                level = 3,
+    regGeometry(gSeries = "madeUp",
+                label = list(al1 = "NAME_0", al2 = "NAME_1", al3 = "NAME_2"),
                 layer = "example_geom4",
-                nameCol = "NAME_0|NAME_1|NAME_2",
                 archive = "example_geom.7z|example_geom4.gpkg",
                 archiveLink = "https://gadm.org/",
                 nextUpdate = "2019-10-01",
@@ -155,7 +152,7 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
     meta_madeUp_1 <- tabshiftr::schema_default %>%
       setIDVar(name = "al1", columns = 1) %>%
       setIDVar(name = "year", columns = 2) %>%
-      setIDVar(name = "commodities", columns = 3) %>%
+      setIDVar(name = "commodity", columns = 3) %>%
       setObsVar(name = "harvested", unit = "ha", columns = 4) %>%
       setObsVar(name = "production", unit = "t", columns = 5)
 
@@ -164,15 +161,14 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
       setIDVar(name = "al1", columns = 1) %>%
       setIDVar(name = "al2", columns = 2) %>%
       setIDVar(name = "year", columns = 3) %>%
-      setIDVar(name = "commodities", columns = 4) %>%
+      setIDVar(name = "commodity", columns = 4) %>%
       setObsVar(name = "harvested", unit = "ha", columns = 5) %>%
       setObsVar(name = "production", unit = "t", columns = 6)
 
-    regTable(nation = "Estonia",
-             subset = "barleyMaize",
+    regTable(subset = "barleyMaize",
              dSeries = "madeUp",
              gSeries = "gadm",
-             level = 1,
+             label = "al1",
              begin = 1990,
              end = 2017,
              schema = meta_madeUp_1,
@@ -184,11 +180,11 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
              metadataPath = "my/local/path",
              update = TRUE)
 
-    regTable(nation = "Estonia",
+    regTable(nation = "aNation",
              subset = "barleyMaize",
              dSeries = "madeUp",
              gSeries = "gadm",
-             level = 2,
+             label = "al2",
              begin = 1990,
              end = 2017,
              schema = meta_madeUp_2,
@@ -202,14 +198,13 @@ makeExampleDB <- function(until = NULL, path = NULL, verbose = FALSE){
 
   }
 
+  # ... and then try to read them in via match_ontology above
   if(any(theSteps %in% "normGeometry")){
-    normGeometry(nation = "Estonia",
-                 update = TRUE, verbose = verbose)
+    normGeometry(update = TRUE, verbose = verbose)
   }
 
   if(any(theSteps %in% "normTable")){
-    normTable(faoID = list(commodities = "target"),
-              update = TRUE, verbose = verbose)
+    normTable(update = TRUE, verbose = verbose)
   }
 
 }

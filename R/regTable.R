@@ -1,8 +1,10 @@
 #' Register a new areal data table
 #'
 #' This function registers a new areal data table into the geospatial database.
-#' @param nation [\code{character(1)}]\cr the nation for which the areal data
-#'   are valid.
+#' @param ... [\code{character(1)}]\cr name and value of the topmost unit under
+#'   which the table shall be registered. The name of this must be a class of
+#'   the gazetteer and the value must be one of the territory names of that
+#'   class, e.g. \emph{nation = "Estonia"}.
 #' @param subset [\code{character(1)}]\cr optional argument to specify which
 #'   subset the file contains. This could be a subset of territorial units (e.g.
 #'   only one municipality) or of a target variable.
@@ -11,8 +13,8 @@
 #' @param gSeries [\code{character(1)}]\cr optionally, the dataseries of the
 #'   geometries, if the geometry dataseries deviates from the dataseries of the
 #'   areal data (see \code{\link{regDataseries}}).
-#' @param level [\code{integerish(1)}]\cr the administrative level at which the
-#'   boundaries are recorded.
+#' @param label [\code{integerish(1)}]\cr the label in the onology this geometry
+#'   should correspond to.
 #' @param begin [\code{integerish(1)}]\cr the date from which on the data are
 #'   valid.
 #' @param end [\code{integerish(1)}]\cr the date until which the data are valid.
@@ -40,16 +42,17 @@
 #' @param overwrite [\code{logical(1)}]\cr whether or not the geometry to
 #'   register shall overwrite a potentially already existing older version.
 #' @details When processing areal data tables, carry out the following steps:
-#'   \enumerate{ \item Determine the \code{nation}, a \code{subset} (if
-#'   applicable), the administrative \code{level} and the \code{dataseries} of
-#'   the areal data and of the geometry, and provide them as arguments to this
-#'   function. \item Provide a \code{begin} and \code{end} date for the areal
-#'   data. \item Run the function. \item (Re)Save the table with the following
-#'   properties: \itemize{\item Format: csv \item Encoding: UTF-8 \item File
-#'   name: What is provided as message by this function \item make sure that the
-#'   file is not modified or reshaped. This will happen during data
-#'   normalisation via the schema description, which expects the original
-#'   table.} \item Confirm that you have saved the file.}
+#'   \enumerate{ \item Determine the main territory (such as a nation, or any
+#'   other polygon), a \code{subset} (if applicable), the ontology
+#'   \code{label} and the dataseries of the areal data and of the geometry, and
+#'   provide them as arguments to this function. \item Provide a \code{begin}
+#'   and \code{end} date for the areal data. \item Run the function. \item
+#'   (Re)Save the table with the following properties: \itemize{\item Format:
+#'   csv \item Encoding: UTF-8 \item File name: What is provided as message by
+#'   this function \item make sure that the file is not modified or reshaped.
+#'   This will happen during data normalisation via the schema description,
+#'   which expects the original table.} \item Confirm that you have saved the
+#'   file.}
 #'
 #'   Every areal data dataseries (\code{dSeries}) may come as a slight
 #'   permutation of a particular table arrangement. The function
@@ -59,40 +62,43 @@
 #'   \code{tabshiftr}.
 #' @return Returns a tibble of the entry that is appended to 'inv_tables.csv' in
 #'   case \code{update = TRUE}.
+#' @family register functions
 #' @examples
-#' # build the example database
-#' makeExampleDB(until = "regGeometry")
+#' if(dev.interactive()){
+#'   # build the example database
+#'   makeExampleDB(until = "regGeometry", path = tempdir())
 #'
-#' # the schema description for this table
-#' library(tabshiftr)
-#' library(magrittr)
+#'   # the schema description for this table
+#'   library(tabshiftr)
 #'
-#' schema_madeUp <-
-#'   setIDVar(name = "al1", columns = 1) %>%
-#'   setIDVar(name = "year", columns = 2) %>%
-#'   setIDVar(name = "commodities", columns = 3) %>%
-#'   setObsVar(name = "harvested",
-#'             factor = 1, columns = 4) %>%
-#'   setObsVar(name = "production",
-#'             factor = 1, columns = 5)
+#'   schema_madeUp <-
+#'     setIDVar(name = "al1", columns = 1) %>%
+#'     setIDVar(name = "year", columns = 2) %>%
+#'     setIDVar(name = "commodities", columns = 3) %>%
+#'     setObsVar(name = "harvested",
+#'               factor = 1, columns = 4) %>%
+#'     setObsVar(name = "production",
+#'               factor = 1, columns = 5)
 #'
-#' regTable(nation = "Estonia",
-#'          subset = "barleyMaize",
-#'          dSeries = "madeUp",
-#'          gSeries = "gadm",
-#'          level = 1,
-#'          begin = 1990,
-#'          end = 2017,
-#'          schema = schema_madeUp,
-#'          archive = "example_table.7z|example_table1.csv",
-#'          archiveLink = "...",
-#'          nextUpdate = "2019-10-01",
-#'          updateFrequency = "quarterly",
-#'          metadataLink = "...",
-#'          metadataPath = "my/local/path",
-#'          update = TRUE)
+#'   regTable(nation = "Estonia",
+#'            subset = "barleyMaize",
+#'            dSeries = "madeUp",
+#'            gSeries = "gadm",
+#'            level = 1,
+#'            begin = 1990,
+#'            end = 2017,
+#'            schema = schema_madeUp,
+#'            archive = "example_table.7z|example_table1.csv",
+#'            archiveLink = "...",
+#'            nextUpdate = "2019-10-01",
+#'            updateFrequency = "quarterly",
+#'            metadataLink = "...",
+#'            metadataPath = "my/local/path",
+#'            update = TRUE)
+#' }
 #' @importFrom readr read_csv write_rds guess_encoding
-#' @importFrom rlang ensym
+#' @importFrom rlang ensym exprs eval_tidy
+#' @importFrom purrr map_chr
 #' @importFrom checkmate assertDataFrame assertNames assertCharacter
 #'   assertIntegerish assertSubset assertLogical testChoice assertChoice
 #'   assertFileExists assertClass assertTRUE testDataFrame testNames
@@ -101,8 +107,8 @@
 #' @importFrom tibble tibble
 #' @export
 
-regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NULL,
-                     level = NULL, begin = NULL, end = NULL, schema = NULL,
+regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
+                     label = NULL, begin = NULL, end = NULL, schema = NULL,
                      archive = NULL, archiveLink = NULL, nextUpdate = NULL,
                      updateFrequency = NULL, metadataLink = NULL, metadataPath = NULL,
                      notes = NULL, update = FALSE, overwrite = FALSE){
@@ -113,7 +119,7 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
   # get tables
   inv_tables <- read_csv(paste0(intPaths, "/inv_tables.csv"), col_types = "iiiccccDccccc")
   inv_dataseries <- read_csv(paste0(intPaths, "/inv_dataseries.csv"), col_types = "icccccc")
-  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iiiccccccDDcc")
+  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iicccccDDcc")
 
   if(dim(inv_dataseries)[1] == 0){
     stop("'inv_dataseries.csv' does not contain any entries!")
@@ -136,14 +142,13 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
               permutation.of = c("datID", "name", "description", "homepage",
                                  "licence_link", "licence_path", "notes"))
   assertNames(x = colnames(inv_geometries),
-              permutation.of = c("geoID", "datID", "level", "source_file", "layer",
-                                 "nation_column", "unit_column", "orig_file", "orig_link", "download_date",
+              permutation.of = c("geoID", "datID", "source_file", "layer",
+                                 "label", "orig_file", "orig_link", "download_date",
                                  "next_update", "update_frequency", "notes"))
-  assertCharacter(x = nation, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = subset, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = dSeries, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = gSeries, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
-  assertIntegerish(x = level, any.missing = FALSE, len = 1, null.ok = TRUE)
+  assertCharacter(x = label, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertIntegerish(x = begin, any.missing = FALSE, len = 1, lower = 1900, null.ok = TRUE)
   assertIntegerish(x = end, any.missing = FALSE, len = 1, upper = as.integer(format(Sys.Date(), "%Y")), null.ok = TRUE)
   assertClass(x = schema, classes = "schema", null.ok = TRUE)
@@ -156,6 +161,14 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
   assertCharacter(x = notes, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertLogical(x = update, len = 1)
   assertLogical(x = overwrite, len = 1)
+
+  broadest <- exprs(..., .named = TRUE)
+
+  if(length(broadest) > 0){
+    mainPoly <- eval_tidy(broadest[[1]])
+  } else {
+    mainPoly <- ""
+  }
 
   schemaName <- as.character(substitute(schema))
 
@@ -217,21 +230,26 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
 
   } else{
     tempDatID <- inv_dataseries$datID[inv_dataseries$name %in% gSeries]
-    geomSeries <- inv_geometries$geoID[inv_geometries$datID %in% tempDatID & inv_geometries$level == level]
+    tempLabels <- map_chr(.x = inv_geometries$label,
+                      .f = function(x){
+                        str_split(tail(str_split(x, "\\|")[[1]], 1), "=")[[1]][1]
+                      })
+    geomSeries <- inv_geometries$geoID[inv_geometries$datID %in% tempDatID & tempLabels == label]
     if(length(geomSeries) < 1){
       stop(paste0("! please first register geometries of the series '", gSeries,"' via 'regGeometries()' !"))
     }
   }
 
-  if(is.null(level)){
-    message("please type in the administrative level of the units: ")
+
+  if(is.null(label)){
+    message("please type in the ontology label of the units: ")
     if(!testing){
-      level <- readline()
+      label <- readline()
     } else {
-      level <- 1
+      label <- 1
     }
-    if(is.na(level)){
-      level = NA_integer_
+    if(is.na(label)){
+      label = NA_character_
     }
   }
 
@@ -264,7 +282,7 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
     if(!testing){
       schema <- readline()
     } else {
-      schema <- readRDS(file = paste0(intPaths, "/adb_tables/meta/schemas/example_schema.rds"))
+      schema <- readRDS(file = paste0(intPaths, "/meta/schemas/example_schema.rds"))
     }
     if(length(schema) < 1){
       schema = NA_character_
@@ -284,21 +302,8 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
     }
   }
 
-  # determine nation value
-  if(!testChoice(x = nation, choices = countries$nation)){
-    theNation <- NULL
-  } else{
-    nations <- nation
-    assertChoice(x = nations, choices = countries$nation)
-    theNation <- countries %>%
-      as_tibble() %>%
-      filter(unit == nations) %>%
-      distinct(iso_a3) %>%
-      tolower()
-  }
-
   # put together file name and get confirmation that file should exist now
-  fileName <- paste0(theNation, "_", level, "_", subset, "_", begin, "_", end, "_", dSeries, ".csv")
+  fileName <- paste0(mainPoly, "_", label, "_", subset, "_", begin, "_", end, "_", dSeries, ".csv")
   filePath <- paste0(intPaths, "/adb_tables/stage2/", fileName)
   fileArchive <- str_split(archive, "\\|")[[1]]
 
@@ -314,7 +319,7 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
   }
 
   # make a schema description
-  write_rds(x = schema, file = paste0(intPaths, "/adb_tables/meta/schemas/", theSchemaName, ".rds"))
+  write_rds(x = schema, file = paste0(intPaths, "/meta/schemas/", theSchemaName, ".rds"))
 
   if(is.null(archiveLink)){
     message("please type in the weblink from which the archive was downloaded: ")
@@ -461,10 +466,11 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
     return(doc)
   } else {
 
-    stage1Exists <- testFileExists(x = filePath, "r", extension = "csv")
-    stage2Exists <- testFileExists(x = paste0(intPaths, "/adb_tables/stage1/", fileArchive[1]), "r")
-    if(stage1Exists){
-      thisTable <- as_tibble(read.csv(file = filePath, header = FALSE, as.is = TRUE, na.strings = schema@format$na, encoding = "UTF-8"))
+    stage1Exists <- testFileExists(x = paste0(intPaths, "/adb_tables/stage1/", fileArchive[1]), "r")
+    stage2Exists <- testFileExists(x = filePath, "r", extension = "csv")
+    if(stage2Exists){
+      # thisTable <- as_tibble(read.csv(file = filePath, header = FALSE, as.is = TRUE, na.strings = schema@format$na, encoding = "UTF-8"))
+      thisTable <- read_csv(file = filePath, col_names = FALSE, col_types = cols(.default = "c"))
       temp <- tryCatch(expr = reorganise(input = thisTable, schema = schema),
                        error = function(e){
                          return("There was an error message")
@@ -474,17 +480,22 @@ regTable <- function(nation = NULL, subset = NULL, dSeries = NULL, gSeries = NUL
                        })
       isTable <- testDataFrame(x = temp)
       correctNames <- testNames(x = names(temp), must.include = names(schema@variables))
-      schema_ok <- if_else(isTable & correctNames, "yes", temp)
+      if(isTable & correctNames){
+        schema_ok <- "schema ok"
+      } else {
+        schema_ok <- temp
+
+      }
     } else {
-      schema_ok <- ""
+      schema_ok <- "not checked"
     }
 
     diag <- tibble(stage1_name = fileArchive[1],
                    stage2_name = fileName,
                    schema_name = schemaName,
-                   stage1_ok = stage2Exists,
-                   stage2_ok = stage1Exists,
-                   schema_ok = schema_ok)
+                   stage1_ok = stage1Exists,
+                   stage2_ok = stage2Exists,
+                   schema = schema_ok)
 
     updateTable(index = diag, name = "diag_tables", matchCols = c("stage2_name"), backup = FALSE)
 

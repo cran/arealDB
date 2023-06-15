@@ -1,13 +1,13 @@
 library(testthat)
 library(checkmate)
 library(tabshiftr)
-library(magrittr)
 context("regTable")
 
 
 test_that("a table inventory entry is produced", {
 
-  makeExampleDB(until = "regGeometry")
+  dbpath <- paste0(tempdir(), "/newDB")
+  makeExampleDB(until = "regGeometry", path = dbpath)
 
   meta_maia_1 <-
     setIDVar(name = "al1", columns = 1) %>%
@@ -16,11 +16,11 @@ test_that("a table inventory entry is produced", {
     setObsVar(name = "harvested", unit = "ha", columns = 4) %>%
     setObsVar(name = "production", unit = "t", columns = 5)
 
-  output <- regTable(nation = "Estonia",
+  output <- regTable(#nation = "Estonia",
                      subset = "barleyMaize",
                      dSeries = "madeUp",
                      gSeries = "gadm",
-                     level = 1,
+                     label = "al1",
                      schema = meta_maia_1,
                      begin = 1990,
                      end = 2017,
@@ -36,12 +36,14 @@ test_that("a table inventory entry is produced", {
                                   "schema", "orig_file", "orig_link", "download_date",
                                   "next_update", "update_frequency", "metadata_link",
                                   "metadata_path", "notes"))
-  expect_file_exists(x = paste0(getOption("adb_path"), "/adb_tables/meta/schemas/schema_1.rds"))
+  expect_file_exists(x = paste0(getOption("adb_path"), "/meta/schemas/schema_1.rds"))
+
 })
 
 test_that("function asks for details, if not provided", {
 
-  makeExampleDB(until = "regGeometry")
+  dbpath <- paste0(tempdir(), "/newDB")
+  makeExampleDB(until = "regGeometry", path = dbpath)
   options(adb_testing = TRUE)
 
   meta_maia_1 <-
@@ -56,7 +58,7 @@ test_that("function asks for details, if not provided", {
   expect_character(x = output, len = 12, any.missing = FALSE, unique = TRUE)
   expect_equal(object = output[1], expected = "please type in to which data series this table belongs: \n")
   expect_equal(object = output[2], expected = "please type in to which geometry series this table belongs: \n")
-  expect_equal(object = output[3], expected = "please type in the administrative level of the units: \n")
+  expect_equal(object = output[3], expected = "please type in the ontology label of the units: \n")
   expect_equal(object = output[4], expected = "please type in the first year in the table: \n")
   expect_equal(object = output[5], expected = "please type in the last year in the table: \n")
   expect_equal(object = output[6], expected = "please provide the schema description for this table: \n")
@@ -66,4 +68,5 @@ test_that("function asks for details, if not provided", {
   expect_equal(object = output[10], expected = "please type in when the table gets its next update (YYYY-MM-DD): \n")
   expect_equal(object = output[11], expected = "if there is already metadata available:\n -> type in the weblink to the metadataset: \n")
   expect_equal(object = output[12], expected = "if there was an existing metadataset downloaded:\n -> type in the local path to the metadataset: \n")
+
 })
