@@ -3,34 +3,34 @@
 #' This function registers a new dataseries of both, geometries or areal data
 #' into the geospatial database. This contains the name and relevant meta-data
 #' of a dataseries to enable provenance tracking and reproducability.
-#' @param name [\code{character(1)}]\cr the dataseries abbreviation or name.
-#' @param description [\code{character(1)}]\cr the "long name" or "brief
+#' @param name [`character(1)`][character]\cr the dataseries abbreviation or
+#'   name.
+#' @param description [`character()`][character]\cr the "long name" or "brief
 #'   description" of the dataseries.
-#' @param homepage [\code{character(1)}]\cr the homepage of the data provider
-#'   where the dataseries or additional information can be found.
-#' @param licence_link [\code{character(1)}]\cr link to the licence or the
+#' @param homepage [`character(1)`][character]\cr the homepage of the data
+#'   provider where the dataseries or additional information can be found.
+#' @param version [`character(1)`][character]\cr the version number or date when
+#'   meta data of the dataseries were recorded.
+#' @param licence_link [`character(1)`][character]\cr link to the licence or the
 #'   webpage from which the licence was copied.
-#' @param licence_path [\code{character(1)}]\cr path to the local file in which
-#'   the licence text is stored.
-#' @param notes [\code{character(1)}]\cr optional notes.
-#' @param update [\code{logical(1)}]\cr whether or not the file
-#'   'inv_dataseries.csv' should be updated (obligatory to continue registering
-#'   geometries or tables associated to this dataseries).
-#' @param overwrite [\code{logical(1)}]\cr whether or not the dataseries to
+#' @param reference [`bibentry(1)`][bibentry]\cr in case the dataseries comes
+#'   with a reference, provide this here as bibentry object.
+#' @param notes [`character(1)`][character]\cr optional notes.
+#' @param overwrite [`logical(1)`][logical]\cr whether or not the dataseries to
 #'   register shall overwrite a potentially already existing older version.
 #' @return Returns a tibble of the new entry that is appended to
-#'   'inv_dataseries.csv' in case \code{update = TRUE}.
+#'   'inv_dataseries.csv'.
 #' @family register functions
 #' @examples
 #' if(dev.interactive()){
 #'   # start the example database
-#'   makeExampleDB(until = "match_gazetteer", path = tempdir())
+#'   adb_exampleDB(until = "match_gazetteer", path = tempdir())
 #'
 #'   regDataseries(name = "gadm",
 #'                 description = "Database of Global Administrative Areas",
+#'                 version = "3.6",
 #'                 homepage = "https://gadm.org/index.html",
-#'                 licence_link = "https://gadm.org/license.html",
-#'                 update = TRUE)
+#'                 licence_link = "https://gadm.org/license.html")
 #' }
 #' @importFrom readr read_csv
 #' @importFrom checkmate assertDataFrame assertNames assertCharacter
@@ -39,26 +39,29 @@
 #' @export
 
 regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
-                          licence_link = NULL, licence_path = NULL, notes = NULL,
-                          update = FALSE, overwrite = FALSE){
+                          version = NULL, licence_link = NULL, reference = NULL,
+                          notes = NULL, overwrite = FALSE){
+
+  # set internal paths
+  intPaths <- paste0(getOption(x = "adb_path"))
 
   # get tables
-  inv_dataseries <- read_csv(paste0(getOption(x = "adb_path"), "/inv_dataseries.csv"), col_types = "icccccc")
+  inventory <- readRDS(paste0(getOption(x = "adb_path"), "/_meta/inventory.rds"))
+  inv_dataseries <- inventory$dataseries
 
   # in testing mode?
   testing <- getOption(x = "adb_testing")
 
   # check validity of arguments
   assertNames(x = colnames(inv_dataseries),
-              permutation.of = c("datID", "name", "description", "homepage",
-                                 "licence_link", "licence_path", "notes"))
+              permutation.of = c("datID", "name", "description", "homepage", "version", "licence_link", "notes"))
   assertCharacter(x = name, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = description, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = homepage, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
+  assertCharacter(x = version, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = licence_link, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
-  assertCharacter(x = licence_path, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
+  assertClass(x = reference, classes = "bibentry", null.ok = TRUE)
   assertCharacter(x = notes, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
-  assertLogical(x = update, len = 1)
   assertLogical(x = overwrite, len = 1)
 
   # ask for missing and required arguments
@@ -109,6 +112,20 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
     theHomepage <- homepage
   }
 
+  if(is.null(version)){
+    message("please type in the version or download date: ")
+    if(!testing){
+      theVersion <- readline()
+    } else {
+      theVersion <- NA
+    }
+    if(is.na(theVersion)){
+      theVersion = NA_character_
+    }
+  } else{
+    theVersion <- version
+  }
+
   if(is.null(licence_link)){
     message("please type in the weblink to the dataseries licence: ")
     if(!testing){
@@ -121,20 +138,6 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
     }
   } else{
     theLicence_link <- licence_link
-  }
-
-  if(is.null(licence_path)){
-    message("please type in the path to the local folder where the licence is stored: ")
-    if(!testing){
-      theLicence_path <- readline()
-    } else {
-      theLicence_path <- NA
-    }
-    if(is.na(theLicence_path)){
-      theLicence_path = NA_character_
-    }
-  } else{
-    theLicence_path <- licence_path
   }
 
   if(is.null(notes)){
@@ -152,13 +155,19 @@ regDataseries <- function(name = NULL, description = NULL, homepage = NULL,
                  name = theName,
                  description = theDescription,
                  homepage = theHomepage,
+                 version = theVersion,
                  licence_link = theLicence_link,
-                 licence_path = theLicence_path,
                  notes = notes)
-  if(update){
-    # in case the user wants to update, attach the new information to the table inv_dataseries.csv
-    updateTable(index = temp, name = "inv_dataseries", matchCols = c("name"))
+
+  if(!is.null(reference)){
+    names(reference) <- name
+    reference$key <- name
   }
+
+  inventory$dataseries <- bind_rows(inv_dataseries, temp)
+  inventory$references <- c(inventory$references, reference)
+  saveRDS(object = inventory, file = paste0(intPaths, "/_meta/inventory.rds"))
+
 
   return(temp)
 }

@@ -8,40 +8,40 @@ regDataseries(
   name = NULL,
   description = NULL,
   homepage = NULL,
+  version = NULL,
   licence_link = NULL,
-  licence_path = NULL,
+  reference = NULL,
   notes = NULL,
-  update = FALSE,
   overwrite = FALSE
 )
 }
 \arguments{
-\item{name}{[\code{character(1)}]\cr the dataseries abbreviation or name.}
+\item{name}{\code{\link[=character]{character(1)}}\cr the dataseries abbreviation or
+name.}
 
-\item{description}{[\code{character(1)}]\cr the "long name" or "brief
+\item{description}{\code{\link[=character]{character()}}\cr the "long name" or "brief
 description" of the dataseries.}
 
-\item{homepage}{[\code{character(1)}]\cr the homepage of the data provider
-where the dataseries or additional information can be found.}
+\item{homepage}{\code{\link[=character]{character(1)}}\cr the homepage of the data
+provider where the dataseries or additional information can be found.}
 
-\item{licence_link}{[\code{character(1)}]\cr link to the licence or the
+\item{version}{\code{\link[=character]{character(1)}}\cr the version number or date when
+meta data of the dataseries were recorded.}
+
+\item{licence_link}{\code{\link[=character]{character(1)}}\cr link to the licence or the
 webpage from which the licence was copied.}
 
-\item{licence_path}{[\code{character(1)}]\cr path to the local file in which
-the licence text is stored.}
+\item{reference}{\code{\link[=bibentry]{bibentry(1)}}\cr in case the dataseries comes
+with a reference, provide this here as bibentry object.}
 
-\item{notes}{[\code{character(1)}]\cr optional notes.}
+\item{notes}{\code{\link[=character]{character(1)}}\cr optional notes.}
 
-\item{update}{[\code{logical(1)}]\cr whether or not the file
-'inv_dataseries.csv' should be updated (obligatory to continue registering
-geometries or tables associated to this dataseries).}
-
-\item{overwrite}{[\code{logical(1)}]\cr whether or not the dataseries to
+\item{overwrite}{\code{\link[=logical]{logical(1)}}\cr whether or not the dataseries to
 register shall overwrite a potentially already existing older version.}
 }
 \value{
 Returns a tibble of the new entry that is appended to
-  'inv_dataseries.csv' in case \code{update = TRUE}.
+'inv_dataseries.csv'.
 }
 \description{
 This function registers a new dataseries of both, geometries or areal data
@@ -51,13 +51,13 @@ of a dataseries to enable provenance tracking and reproducability.
 \examples{
 if(dev.interactive()){
   # start the example database
-  makeExampleDB(until = "match_gazetteer", path = tempdir())
+  adb_exampleDB(until = "match_gazetteer", path = tempdir())
 
   regDataseries(name = "gadm",
                 description = "Database of Global Administrative Areas",
+                version = "3.6",
                 homepage = "https://gadm.org/index.html",
-                licence_link = "https://gadm.org/license.html",
-                update = TRUE)
+                licence_link = "https://gadm.org/license.html")
 }
 }
 \seealso{

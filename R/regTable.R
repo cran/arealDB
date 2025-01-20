@@ -1,45 +1,49 @@
 #' Register a new areal data table
 #'
 #' This function registers a new areal data table into the geospatial database.
-#' @param ... [\code{character(1)}]\cr name and value of the topmost unit under
-#'   which the table shall be registered. The name of this must be a class of
-#'   the gazetteer and the value must be one of the territory names of that
+#' @param ... [`character(1)`][character]\cr name and value of the topmost unit
+#'   under which the table shall be registered. The name of this must be a class
+#'   of the gazetteer and the value must be one of the territory names of that
 #'   class, e.g. \emph{nation = "Estonia"}.
-#' @param subset [\code{character(1)}]\cr optional argument to specify which
-#'   subset the file contains. This could be a subset of territorial units (e.g.
-#'   only one municipality) or of a target variable.
-#' @param dSeries [\code{character(1)}]\cr the dataseries of the areal data (see
-#'   \code{\link{regDataseries}}).
-#' @param gSeries [\code{character(1)}]\cr optionally, the dataseries of the
-#'   geometries, if the geometry dataseries deviates from the dataseries of the
-#'   areal data (see \code{\link{regDataseries}}).
-#' @param label [\code{integerish(1)}]\cr the label in the onology this geometry
-#'   should correspond to.
-#' @param begin [\code{integerish(1)}]\cr the date from which on the data are
+#' @param subset [`character(1)`][character]\cr optional argument to specify
+#'   which subset the file contains. This could be a subset of territorial units
+#'   (e.g. only one municipality) or of a target variable.
+#' @param dSeries [`character(1)`][character]\cr the dataseries of the areal
+#'   data (see \code{\link{regDataseries}}).
+#' @param gSeries [`character(1)`][character]\cr optionally, the dataseries of
+#'   the geometries, if the geometry dataseries deviates from the dataseries of
+#'   the areal data (see \code{\link{regDataseries}}).
+#' @param label [`integerish(1)`][integer]\cr the label in the onology this
+#'   geometry should correspond to.
+#' @param begin [`integerish(1)`][integer]\cr the date from which on the data
+#'   are valid.
+#' @param end [`integerish(1)`][integer]\cr the date until which the data are
 #'   valid.
-#' @param end [\code{integerish(1)}]\cr the date until which the data are valid.
-#' @param schema [\code{list(1)}]\cr the schema description of the table to read
-#'   in (must have been placed in the global environment before calling it
-#'   here).
-#' @param archive [\code{character(1)}]\cr the original file from which the
-#'   boundaries emerge.
-#' @param archiveLink [\code{character(1)}]\cr download-link of the archive.
-#' @param nextUpdate [\code{character(1)}]\cr when does the geometry dataset get
-#'   updated the next time (format restricted to: YYYY-MM-DD).
-#' @param updateFrequency [\code{character(1)}]\cr value describing the
+#' @param schema [`schema`][tabshiftr::schema]\cr the schema description of the
+#'   table to read in (must have been placed in the global environment before
+#'   calling it here).
+#' @param archive [`character(1)`][character]\cr the original file from which
+#'   the boundaries emerge.
+#' @param archiveLink [`character(1)`][character]\cr download-link of the
+#'   archive.
+#' @param downloadDate [`character(1)`][character]\cr value describing the
+#'   download date of this dataset (in YYYY-MM-DD format).
+#' @param updateFrequency [`character(1)`][character]\cr value describing the
 #'   frequency with which the dataset is updated, according to the ISO 19115
 #'   Codelist, MD_MaintenanceFrequencyCode. Possible values are: 'continual',
 #'   'daily', 'weekly', 'fortnightly', 'quarterly', 'biannually', 'annually',
 #'   'asNeeded', 'irregular', 'notPlanned', 'unknown', 'periodic',
 #'   'semimonthly', 'biennially'.
-#' @param metadataLink [\code{character(1)}]\cr if there is already metadata
-#'   existing: link to the meta dataset.
-#' @param metadataPath [\code{character(1)}]\cr if an existing meta dataset was
-#'   downloaded along the data: the path where it is stored locally.
-#' @param notes [\code{character(1)}]\cr optional notes.
-#' @param update [\code{logical(1)}]\cr whether or not the file 'inv_tables.csv'
-#'   should be updated.
-#' @param overwrite [\code{logical(1)}]\cr whether or not the geometry to
+#' @param metadataLink [`character(1)`][character]\cr if there is already
+#'   metadata existing: link to the meta dataset.
+#' @param metadataPath [`character(1)`][character]\cr if an existing meta
+#'   dataset was downloaded along the data: the path where it is stored locally.
+#' @param notes [`character(1)`][character]\cr optional notes.
+#' @param diagnose [`logical(1)`][logical]\cr whether or not to try to
+#'   reorganise the table with the provided schema. note: this does not save the
+#'   reogranised table into the database yet, further steps of harmonisation are
+#'   carried out by \code{\link{normTable}} before that.
+#' @param overwrite [`logical(1)`][logical]\cr whether or not the geometry to
 #'   register shall overwrite a potentially already existing older version.
 #' @details When processing areal data tables, carry out the following steps:
 #'   \enumerate{ \item Determine the main territory (such as a nation, or any
@@ -66,7 +70,7 @@
 #' @examples
 #' if(dev.interactive()){
 #'   # build the example database
-#'   makeExampleDB(until = "regGeometry", path = tempdir())
+#'   adb_exampleDB(until = "regGeometry", path = tempdir())
 #'
 #'   # the schema description for this table
 #'   library(tabshiftr)
@@ -82,19 +86,18 @@
 #'
 #'   regTable(nation = "Estonia",
 #'            subset = "barleyMaize",
+#'            label = "al1",
 #'            dSeries = "madeUp",
 #'            gSeries = "gadm",
-#'            level = 1,
 #'            begin = 1990,
 #'            end = 2017,
 #'            schema = schema_madeUp,
 #'            archive = "example_table.7z|example_table1.csv",
 #'            archiveLink = "...",
-#'            nextUpdate = "2019-10-01",
+#'            nextUpdate = "2024-10-01",
 #'            updateFrequency = "quarterly",
 #'            metadataLink = "...",
-#'            metadataPath = "my/local/path",
-#'            update = TRUE)
+#'            metadataPath = "my/local/path")
 #' }
 #' @importFrom readr read_csv write_rds guess_encoding
 #' @importFrom rlang ensym exprs eval_tidy
@@ -102,24 +105,36 @@
 #' @importFrom checkmate assertDataFrame assertNames assertCharacter
 #'   assertIntegerish assertSubset assertLogical testChoice assertChoice
 #'   assertFileExists assertClass assertTRUE testDataFrame testNames
-#' @importFrom dplyr filter distinct
-#' @importFrom stringr str_split
+#' @importFrom dplyr filter distinct pull
+#' @importFrom stringr str_split str_detect
 #' @importFrom tibble tibble
 #' @export
 
 regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
                      label = NULL, begin = NULL, end = NULL, schema = NULL,
-                     archive = NULL, archiveLink = NULL, nextUpdate = NULL,
+                     archive = NULL, archiveLink = NULL, downloadDate = NULL,
                      updateFrequency = NULL, metadataLink = NULL, metadataPath = NULL,
-                     notes = NULL, update = FALSE, overwrite = FALSE){
+                     notes = NULL, diagnose = FALSE, overwrite = FALSE){
+
+  # set internal function
+  testCompressed <- function(x){
+    assertCharacter(x = x, any.missing = FALSE, len = 1)
+    return(grepl("^.*(.gz|.bz2|.tar|.zip|.tgz|.gzip|.7z)[[:space:]]*$", x))
+  }
 
   # set internal paths
   intPaths <- paste0(getOption(x = "adb_path"))
+  gazPath <- paste0(getOption(x = "gazetteer_path"))
+  topClass <- paste0(getOption(x = "gazetteer_top"))
+
+  gaz <- load_ontology(gazPath)
+  gazClasses <- get_class(ontology = gazPath)
 
   # get tables
-  inv_tables <- read_csv(paste0(intPaths, "/inv_tables.csv"), col_types = "iiiccccDccccc")
-  inv_dataseries <- read_csv(paste0(intPaths, "/inv_dataseries.csv"), col_types = "icccccc")
-  inv_geometries <- read_csv(paste0(intPaths, "/inv_geometries.csv"), col_types = "iicccccDDcc")
+  inventory <- readRDS(paste0(getOption(x = "adb_path"), "/_meta/inventory.rds"))
+  inv_tables <- inventory$tables
+  inv_dataseries <- inventory$dataseries
+  inv_geometries <- inventory$geometries
 
   if(dim(inv_dataseries)[1] == 0){
     stop("'inv_dataseries.csv' does not contain any entries!")
@@ -135,37 +150,35 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
 
   # check validity of arguments
   assertNames(x = colnames(inv_tables),
-              permutation.of = c("tabID", "datID", "geoID", "source_file", "schema",
-                                 "orig_file", "orig_link", "download_date", "next_update",
-                                 "update_frequency", "metadata_link", "metadata_path", "notes"))
+              permutation.of = c("tabID", "datID", "geoID", "geography", "level", "start_period", "end_period", "stage2_name", "schema", "stage1_name", "stage1_url", "download_date", "update_frequency", "metadata_url", "metadata_path", "notes"))
   assertNames(x = colnames(inv_dataseries),
-              permutation.of = c("datID", "name", "description", "homepage",
-                                 "licence_link", "licence_path", "notes"))
+              permutation.of = c("datID", "name", "description", "homepage", "version", "licence_link", "notes"))
   assertNames(x = colnames(inv_geometries),
-              permutation.of = c("geoID", "datID", "source_file", "layer",
-                                 "label", "orig_file", "orig_link", "download_date",
-                                 "next_update", "update_frequency", "notes"))
+              permutation.of = c("geoID", "datID", "stage2_name", "layer", "label", "ancillary", "stage1_name", "stage1_url", "download_date", "update_frequency", "notes"))
   assertCharacter(x = subset, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = dSeries, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = gSeries, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = label, any.missing = FALSE, len = 1, null.ok = TRUE)
-  assertIntegerish(x = begin, any.missing = FALSE, len = 1, lower = 1900, null.ok = TRUE)
+  assertIntegerish(x = begin, any.missing = FALSE, len = 1, lower = 1800, null.ok = TRUE)
   assertIntegerish(x = end, any.missing = FALSE, len = 1, upper = as.integer(format(Sys.Date(), "%Y")), null.ok = TRUE)
   assertClass(x = schema, classes = "schema", null.ok = TRUE)
   assertCharacter(x = archive, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = archiveLink, any.missing = FALSE, null.ok = TRUE)
-  assertCharacter(x = nextUpdate, any.missing = FALSE, null.ok = TRUE)
+  assertDate(x = downloadDate, any.missing = FALSE, len = 1, null.ok = TRUE)
   assertCharacter(x = updateFrequency, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = metadataLink, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = metadataPath, any.missing = FALSE, null.ok = TRUE)
   assertCharacter(x = notes, ignore.case = TRUE, any.missing = FALSE, len = 1, null.ok = TRUE)
-  assertLogical(x = update, len = 1)
+  assertLogical(x = diagnose, len = 1)
   assertLogical(x = overwrite, len = 1)
 
   broadest <- exprs(..., .named = TRUE)
 
   if(length(broadest) > 0){
     mainPoly <- eval_tidy(broadest[[1]])
+
+    # test whether broadest exists in the gazetteer
+    assertSubset(x = names(broadest), choices = gazClasses$label)
   } else {
     mainPoly <- ""
   }
@@ -208,6 +221,18 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     dataSeries <- inv_dataseries$datID[inv_dataseries$name %in% dSeries]
   }
 
+  if(is.null(label)){
+    message("please type in the ontology label of the units: ")
+    if(!testing){
+      label <- readline()
+    } else {
+      label <- "al1"
+    }
+    if(is.na(label)){
+      label = NA_character_
+    }
+  }
+
   if(is.null(gSeries)){
     message("please type in to which geometry series this table belongs: ")
     if(!testing){
@@ -240,19 +265,6 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     }
   }
 
-
-  if(is.null(label)){
-    message("please type in the ontology label of the units: ")
-    if(!testing){
-      label <- readline()
-    } else {
-      label <- 1
-    }
-    if(is.na(label)){
-      label = NA_character_
-    }
-  }
-
   if(is.null(begin)){
     message("please type in the first year in the table: ")
     if(!testing){
@@ -282,7 +294,7 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     if(!testing){
       schema <- readline()
     } else {
-      schema <- readRDS(file = paste0(intPaths, "/meta/schemas/example_schema.rds"))
+      schema <- readRDS(file = paste0(intPaths, "/_meta/schemas/example_schema.rds"))
     }
     if(length(schema) < 1){
       schema = NA_character_
@@ -303,23 +315,24 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
   }
 
   # put together file name and get confirmation that file should exist now
-  fileName <- paste0(mainPoly, "_", label, "_", subset, "_", begin, "_", end, "_", dSeries, ".csv")
-  filePath <- paste0(intPaths, "/adb_tables/stage2/", fileName)
+  tempName <- paste0(mainPoly, "_", label, "_", subset, "_", begin, "_", end, "_", dSeries)
+  fileName <- paste0(tempName, ".csv")
+  filePath <- paste0(intPaths, "/tables/stage2/", fileName)
   fileArchive <- str_split(archive, "\\|")[[1]]
 
-  if(any(inv_tables$source_file %in% fileName)){
+  if(any(inv_tables$stage1_name %in% fileName)){
     if(overwrite){
-      theSchemaName <- inv_tables$schema[inv_tables$source_file == fileName]
-      newTID <- inv_tables$tabID[which(inv_tables$source_file %in% fileName)]
+      theSchemaName <- inv_tables$schema[inv_tables$stage1_name == fileName]
+      newTID <- inv_tables$tabID[which(inv_tables$stage1_name %in% fileName)]
     } else {
       return(paste0("'", fileName, "' has already been registered."))
     }
   } else {
-    theSchemaName <- paste0("schema_", newTID)
+    theSchemaName <- paste0(tempName, "_schema")
   }
 
   # make a schema description
-  write_rds(x = schema, file = paste0(intPaths, "/meta/schemas/", theSchemaName, ".rds"))
+  write_rds(x = schema, file = paste0(intPaths, "/_meta/schemas/", theSchemaName, ".rds"))
 
   if(is.null(archiveLink)){
     message("please type in the weblink from which the archive was downloaded: ")
@@ -338,10 +351,7 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     if(!testing){
       updateFrequency <- readline()
       while(!is.element(updateFrequency,
-                        c("continual", "daily","weekly", "fortnightly",
-                          "quarterly", "biannually", "annually", "asNeeded",
-                          "irregular", "notPlanned", "unknown", "periodic",
-                          "semimonthly", "biennially"))){
+                        c("continual", "daily","weekly", "fortnightly", "quarterly", "biannually", "annually", "asNeeded", "irregular", "notPlanned", "unknown", "periodic", "semimonthly", "biennially"))){
         # test missing
         message(paste(" -> input one of: continual, daily, weekly, fortnightly, quarterly, biannually, annually, asNeeded, irregular, notPlanned, unknown, periodic, semimonthly, biennially \n
                       please repeat: "))
@@ -352,25 +362,19 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     }
     if(is.na(updateFrequency)){
       # this might fail, there is no NA_Date_
-      # also, it should be impossible to land here
       updateFrequency = as.Date(NA)
     }
   }
 
-  if(is.null(nextUpdate)){
-    if(updateFrequency %in% c("asNeeded", "notPlanned", "unknown")){
-      nextUpdate <- as.Date(NA)
+  if(is.null(downloadDate)){
+    message("please type in when the table was downloaded (YYYY-MM-DD): ")
+    if(!testing){
+      downloadDate <- as.Date(readline(), "%Y-%m-%d")
     } else {
-      message("please type in when the table gets its next update (YYYY-MM-DD): ")
-      if(!testing){
-        nextUpdate <- as.Date(readline(), "%Y-%m-%d")
-      } else {
-        nextUpdate <- as.Date("2019-10-01", "%Y-%m-%d")
-      }
-      if(is.na(nextUpdate)){
-        # this might fail, there is no NA_Date_
-        nextUpdate = as.Date(NA)
-      }
+      downloadDate <- as.Date("2019-10-01", "%Y-%m-%d")
+    }
+    if(is.na(downloadDate)){
+      downloadDate = as.Date("0001-01-01")
     }
   }
 
@@ -393,7 +397,7 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     } else {
       metadataPath <- "C:/Users/arue/Projects/GeoKur/Luckinet/census/table1_meta.txt"
     }
-    if(is.na(metadataLink)){
+    if(is.na(metadataPath)){
       metadataPath = NA_character_
     }
   }
@@ -402,105 +406,103 @@ regTable <- function(..., subset = NULL, dSeries = NULL, gSeries = NULL,
     notes = NA_character_
   }
 
-  if(update){
-
-    # test whether the archive file is available
-    if(!testFileExists(x = paste0(intPaths, "/adb_tables/stage1/", fileArchive[1]))){
-      message(paste0("... please store the archive '", fileArchive[[1]], "' in './adb_tables/stage1'"))
-      if(!testing){
-        done <- readline(" -> press any key when done: ")
-      }
-
-      # make sure that the file is really there
-      assertFileExists(x = paste0(intPaths, "/adb_tables/stage1/", fileArchive[1]))
-
-      # ... and if it is compressed, whether also the file therein is given that contains the data
-      if(testCompressed(x = fileArchive[1]) & length(fileArchive) < 2){
-        message(paste0("please give the name of the file in ", fileArchive[1]," that contains the table: "))
-        if(!testing){
-          theArchiveFile <- readline()
-        } else {
-          theArchiveFile <- "example_table.csv"
-        }
-        archive <- paste0(archive, "|", theArchiveFile)
-      }
+  # test whether the stage1 file is available
+  targetDir <- paste0(intPaths, "/tables/stage1/", dSeries, "/")
+  targetFiles <- list.files(path = targetDir)
+  if(!any(str_detect(string = targetFiles, pattern = fileArchive[[1]]) | targetFiles == fileArchive[[1]])){
+    message(paste0("... please store the archive '", fileArchive[[1]], "' in './tables/stage1/", dSeries, "/'"))
+    if(!testDirectoryExists(x = paste0(intPaths, "/tables/stage1/", dSeries))){
+      dir.create(path = paste0(intPaths, "/tables/stage1/", dSeries))
+    }
+    if(!testing){
+      done <- readline(" -> press any key when done: ")
     }
 
-    # test that the file is available
-    if(!testFileExists(x = filePath, extension = "csv")){
-      processedPath <- paste0(intPaths, "/adb_tables/stage2/processed/", fileName)
-      if(testFileExists(x = processedPath, extension = "csv")){
-        temp <- inv_tables[which(inv_tables$source_file %in% fileName), ]
-        message(paste0("! the table '", fileName, "' has already been normalised !"))
-        return(temp)
-      }
+    # make sure that the file is really there
+    assertFileExists(x = paste0(intPaths, "/tables/stage1/", dSeries, "/", fileArchive[1]))
 
-      message(paste0("... please store the table as '", fileName, "' with utf-8 encoding in './adb_tables/stage2'"))
+    # ... and if it is compressed, whether also the file therein is given that contains the data
+    if(testCompressed(x = fileArchive[1]) & length(fileArchive) < 2){
+      message(paste0("please give the name of the file in ", fileArchive[1]," that contains the table: "))
       if(!testing){
-        done <- readline(" -> press any key when done: ")
+        theArchiveFile <- readline()
+      } else {
+        theArchiveFile <- "example_table.csv"
       }
+      archive <- paste0(archive, "|", theArchiveFile)
+    }
+  }
+
+  # test that the stage2 file is available
+  if(!testFileExists(x = filePath, extension = "csv")){
+    processedPath <- paste0(intPaths, "/tables/stage2/processed/", fileName)
+    if(testFileExists(x = processedPath, extension = "csv")){
+      temp <- inv_tables[which(inv_tables$stage1_name %in% fileName), ]
+      message(paste0("! the table '", fileName, "' has already been normalised !"))
+      return(temp)
+    }
+
+    message(paste0("... please store the table as '", fileName, "' with utf-8 encoding in './tables/stage2'"))
+    if(!testing){
+      done <- readline(" -> press any key when done: ")
+
       # make sure that the file is really there
       assertFileExists(x = filePath, extension = "csv")
     }
-
-    # put together new census database entry
-    doc <- tibble(tabID = newTID,
-                  geoID = geomSeries,
-                  datID = dataSeries,
-                  source_file = fileName,
-                  schema = theSchemaName,
-                  orig_file = archive,
-                  orig_link = archiveLink,
-                  download_date = Sys.Date(),
-                  next_update = nextUpdate,
-                  update_frequency = updateFrequency,
-                  metadata_link = metadataLink,
-                  metadata_path = metadataPath,
-                  notes = notes)
-
-    if(!any(inv_tables$source_file %in% fileName) | overwrite){
-      # in case the user wants to update, attach the new information to the table inv_sourceData.csv
-      updateTable(index = doc, name = "inv_tables", matchCols = c("source_file"))
-    }
-
-    return(doc)
-  } else {
-
-    stage1Exists <- testFileExists(x = paste0(intPaths, "/adb_tables/stage1/", fileArchive[1]), "r")
-    stage2Exists <- testFileExists(x = filePath, "r", extension = "csv")
-    if(stage2Exists){
-      # thisTable <- as_tibble(read.csv(file = filePath, header = FALSE, as.is = TRUE, na.strings = schema@format$na, encoding = "UTF-8"))
-      thisTable <- read_csv(file = filePath, col_names = FALSE, col_types = cols(.default = "c"))
-      temp <- tryCatch(expr = reorganise(input = thisTable, schema = schema),
-                       error = function(e){
-                         return("There was an error message")
-                       },
-                       warning = function(w){
-                         return("There was a warning message")
-                       })
-      isTable <- testDataFrame(x = temp)
-      correctNames <- testNames(x = names(temp), must.include = names(schema@variables))
-      if(isTable & correctNames){
-        schema_ok <- "schema ok"
-      } else {
-        schema_ok <- temp
-
-      }
-    } else {
-      schema_ok <- "not checked"
-    }
-
-    diag <- tibble(stage1_name = fileArchive[1],
-                   stage2_name = fileName,
-                   schema_name = schemaName,
-                   stage1_ok = stage1Exists,
-                   stage2_ok = stage2Exists,
-                   schema = schema_ok)
-
-    updateTable(index = diag, name = "diag_tables", matchCols = c("stage2_name"), backup = FALSE)
-
-    return(diag)
   }
 
+  if(diagnose){
+
+    # thisTable <- as_tibble(read.csv(file = filePath, header = FALSE, as.is = TRUE, na.strings = schema@format$na, encoding = "UTF-8"))
+    thisTable <- read_csv(file = filePath, col_names = FALSE, col_types = cols(.default = "c"))
+    temp <- tryCatch(expr = reorganise(input = thisTable, schema = schema),
+                     error = function(e){
+                       return("There was an error message")
+                     },
+                     warning = function(w){
+                       return("There was a warning message")
+                     })
+    isTable <- testDataFrame(x = temp)
+    correctNames <- testNames(x = names(temp), must.include = names(schema@variables))
+    if(isTable & correctNames){
+      message("schema ok")
+    } else {
+      stop(temp)
+    }
+
+  }
+
+  # put together new census database entry
+  doc <- tibble(tabID = newTID,
+                geoID = geomSeries,
+                datID = dataSeries,
+                geography = mainPoly,
+                level = label,
+                start_period = begin,
+                end_period = end,
+                stage2_name = fileName,
+                schema = theSchemaName,
+                stage1_name = archive,
+                stage1_url = archiveLink,
+                download_date = downloadDate,
+                update_frequency = updateFrequency,
+                metadata_url = metadataLink,
+                metadata_path = metadataPath,
+                notes = notes)
+
+  if(dim(inv_tables)[1] != 0){
+    if(doc$stage1_name %in% inv_tables$stage1_name & doc$stage2_name %in% inv_tables$stage2_name){
+      doc$tabID <- inv_tables$tabID[inv_tables$stage1_name %in% doc$stage1_name & inv_tables$stage2_name %in% doc$stage2_name]
+      inv_tables[inv_tables$stage1_name %in% doc$stage1_name & inv_tables$stage2_name %in% doc$stage2_name,] <- doc
+      inventory$tables <- inv_tables
+    } else {
+      inventory$tables <- bind_rows(inv_tables, doc)
+    }
+  } else {
+    inventory$tables <- doc
+  }
+  saveRDS(object = inventory, file = paste0(intPaths, "/_meta/inventory.rds"))
+
+  return(doc)
 
 }

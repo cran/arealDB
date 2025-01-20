@@ -1573,9 +1573,9 @@ border-radius: 0px;
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>ontoDir <span class="ot">&lt;-</span> <span class="st">&quot;directory/to/ontology.rds&quot;</span></span></code></pre></div>
 <div id="rationale" class="section level1" number="1">
 <h1><span class="header-section-number">1</span> Rationale</h1>
-<p>Areal data are any data that summarise a certain aspect related to a particular region. Those data are relevant in many applications in the environmental and socioeconomic sciences, such as biodiversity checklists, agricultural statistics, or socioeconomic surveys. For applications that surpass the spatial, temporal or thematic scope of any single data source, data must be integrated from several heterogeneous sources. Inconsistent concepts, definitions, or messy data tables make this a tedious and error-prone process.</p>
-<p><code>arealDB</code> has been developed for the purpose of providing an easy-to-use way to integrate areal data together with associated geometries into a standardised database. In the current, revised version, it makes use of the <code>ontologics</code> R-package to harmonise the names of territories (the geometries) and the target variables (the tables).</p>
-<p>A previous version of this tutorial can be found in the replication script <a href="https://arxiv.org/format/1909.06610">appendix/source</a> of the pre-print. This version is not an exact replication script, as it is built mostly with dummy-code where paths on the harddisc would be needed. However, it should still serve to exemplify how to use <code>arealDB</code> in the current version.</p>
+<p>Areal data are any data that summarise a certain aspect related to a particular region. Those data are relevant in many applications in the environmental and socio-economic sciences, such as biodiversity check-lists, agricultural statistics, or socio-economic surveys. For applications that surpass the spatial, temporal or thematic scope of any single data source, data must be integrated from several heterogeneous sources. Inconsistent concepts, definitions, or messy data tables make this a tedious and error-prone process.</p>
+<p><code>arealDB</code> has been developed for the purpose of providing an easy-to-use way to integrate areal data together with associated geometries into a standardised database. In the current version it makes use of the <code>ontologics</code> R-package to harmonise the names of territories (the geometries) and the target variables (the tables).</p>
+<p>A previous version of this tutorial can be found in the replication script <a href="https://arxiv.org/format/1909.06610">appendix/source</a> of the pre-print. This version is not an exact replication script, as it is built mostly with dummy-code. However, it should still serve to exemplify how to use <code>arealDB</code> in the current version.</p>
 </div>
 <div id="the-basics" class="section level1" number="2">
 <h1><span class="header-section-number">2</span> The basics</h1>
@@ -1585,7 +1585,7 @@ border-radius: 0px;
 <blockquote>
 <p>[…] More simply, an ontology is a way of showing the properties of a subject area and how they are related, by defining a set of concepts and categories that represent the subject. <a href="https://en.wikipedia.org/wiki/Ontology_(computer_science)">[wikipedia]</a></p>
 </blockquote>
-<p>Any target variable can (and should be) recorded in a standardized fashion. It may be extremely tricky to identify a domain-specific standard because this usually involves social processes (people need to agree upon it), however this is not part of this tutorial. For example, concepts such as biological species are part of a complex taxonomy of terms that identify <em>kingdoms</em>, <em>families</em>, <em>species</em>, <em>varieties</em> and many more. Species are nested within families and other hierarchical and synonymous relationships exist in such taxonomies. All these issues are addressed in an ontology.</p>
+<p>Any target variable can (and should be) recorded in a standardized fashion. It may be extremely tricky to identify a domain-specific standard because this usually involves social processes (people need to agree upon it), however this is not part of this tutorial. For example, concepts such as biological species are part of a complex taxonomy of terms that identify <em>kingdoms</em>, <em>families</em>, <em>species</em>, <em>varieties</em> and many more. Species are nested within families and other hierarchical and synonymous relationships exist in such taxonomies. All these issues are addressed in an ontology (or typology, etc).</p>
 </div>
 <div id="gazetteer" class="section level2" number="2.2">
 <h2><span class="header-section-number">2.2</span> Gazetteer</h2>
@@ -1607,157 +1607,128 @@ border-radius: 0px;
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>             <span class="fu">rep</span>(un_region[<span class="dv">4</span>], <span class="dv">5</span>), <span class="fu">rep</span>(un_region[<span class="dv">5</span>], <span class="dv">4</span>), <span class="fu">rep</span>(un_region[<span class="dv">6</span>], <span class="dv">4</span>)))</span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a></span>
 <span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="co"># To start building the gazetteer, we first need to record some meta-data ...</span></span>
-<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> </span>
-<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>  <span class="fu">start_ontology</span>(<span class="at">name =</span> <span class="st">&quot;gazetteer&quot;</span>, </span>
-<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>                 <span class="at">path =</span> <span class="fu">paste0</span>(DBDir, <span class="st">&quot;/tables/&quot;</span>),</span>
-<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>                 <span class="at">version =</span> <span class="st">&quot;1.0.0&quot;</span>,</span>
-<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>                 <span class="at">code =</span> <span class="st">&quot;.xxx&quot;</span>,</span>
-<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>                 <span class="at">description =</span> <span class="st">&quot;a UN geomscheme gazetteer&quot;</span>,</span>
-<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>                 <span class="at">homepage =</span> <span class="st">&quot;https://en.wikipedia.org/wiki/United_Nations_geoscheme&quot;</span>,</span>
-<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>                 <span class="at">license =</span> <span class="st">&quot;CC-BY-4.0&quot;</span>,</span>
-<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>                 <span class="at">notes =</span> <span class="st">&quot;This gazetteer nests each nation into the United Nations geoscheme.&quot;</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> <span class="fu">start_ontology</span>(</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">&quot;gazetteer&quot;</span>, </span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>    <span class="at">path =</span> <span class="fu">paste0</span>(DBDir, <span class="st">&quot;/tables/&quot;</span>),</span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>    <span class="at">version =</span> <span class="st">&quot;1.0.0&quot;</span>,</span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>    <span class="at">code =</span> <span class="st">&quot;.xxx&quot;</span>,</span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>    <span class="at">description =</span> <span class="st">&quot;UN geomscheme gazetteer&quot;</span>,</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>    <span class="at">homepage =</span> <span class="st">&quot;https://en.wikipedia.org/wiki/United_Nations_geoscheme&quot;</span>,</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>    <span class="at">license =</span> <span class="st">&quot;CC-BY-4.0&quot;</span>,</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>    <span class="at">notes =</span> <span class="st">&quot;This gazetteer nests each nation into the United Nations geoscheme.&quot;</span>)</span>
 <span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a></span>
-<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co"># ... then we can define some new source of information from which external concepts would be taken.</span></span>
-<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> </span>
-<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>  <span class="fu">new_source</span>(<span class="at">name =</span> <span class="st">&quot;gadm&quot;</span>,</span>
-<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>             <span class="at">date =</span> <span class="fu">Sys.Date</span>(),</span>
-<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>             <span class="at">description =</span> <span class="st">&quot;GADM wants to map the administrative areas of all countries, at all levels </span></span>
-<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a><span class="st">                            of sub-division. We provide data at high spatial resolutions that includes </span></span>
-<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a><span class="st">                            an extensive set of attributes.&quot;</span>,</span>
-<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a>             <span class="at">homepage =</span> <span class="st">&quot;https://gadm.org/index.html&quot;</span>,</span>
-<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>             <span class="at">license =</span> <span class="st">&quot;CC-BY&quot;</span>,</span>
-<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>             <span class="at">ontology =</span> gazetteer)</span>
-<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a></span>
-<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a><span class="co"># All items stored in an ontology must have some class that is ontology-specific and thus needs to be</span></span>
-<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a><span class="co"># defined manually. Here we define the three classes &#39;un_region&#39;, &#39;un_subregion&#39; and &#39;nation&#39;.</span></span>
-<span id="cb2-38"><a href="#cb2-38" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> </span>
-<span id="cb2-39"><a href="#cb2-39" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;un_region&quot;</span>, </span>
-<span id="cb2-40"><a href="#cb2-40" tabindex="-1"></a>            <span class="at">target =</span> <span class="cn">NA</span>,</span>
-<span id="cb2-41"><a href="#cb2-41" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;region according to the UN geoscheme&quot;</span>, </span>
-<span id="cb2-42"><a href="#cb2-42" tabindex="-1"></a>            <span class="at">ontology =</span> gazetteer) <span class="sc">%&gt;%</span></span>
-<span id="cb2-43"><a href="#cb2-43" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;un_subregion&quot;</span>, </span>
-<span id="cb2-44"><a href="#cb2-44" tabindex="-1"></a>            <span class="at">target =</span> <span class="st">&quot;un_region&quot;</span>,                               <span class="co"># un_subregion is nested into un_region</span></span>
-<span id="cb2-45"><a href="#cb2-45" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;sub-region according to the UN geoscheme&quot;</span>, </span>
-<span id="cb2-46"><a href="#cb2-46" tabindex="-1"></a>            <span class="at">ontology =</span> .) <span class="sc">%&gt;%</span></span>
-<span id="cb2-47"><a href="#cb2-47" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;al1&quot;</span>, </span>
-<span id="cb2-48"><a href="#cb2-48" tabindex="-1"></a>            <span class="at">target =</span> <span class="st">&quot;un_subregion&quot;</span>,</span>
-<span id="cb2-49"><a href="#cb2-49" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;the first administrative level of the GADM gazetteer&quot;</span>, </span>
-<span id="cb2-50"><a href="#cb2-50" tabindex="-1"></a>            <span class="at">ontology =</span> .) <span class="sc">%&gt;%</span></span>
-<span id="cb2-51"><a href="#cb2-51" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;al2&quot;</span>, </span>
-<span id="cb2-52"><a href="#cb2-52" tabindex="-1"></a>            <span class="at">target =</span> <span class="st">&quot;al1&quot;</span>,</span>
-<span id="cb2-53"><a href="#cb2-53" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;the second administrative level of the GADM gazetteer&quot;</span>, </span>
-<span id="cb2-54"><a href="#cb2-54" tabindex="-1"></a>            <span class="at">ontology =</span> .) <span class="sc">%&gt;%</span></span>
-<span id="cb2-55"><a href="#cb2-55" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;al3&quot;</span>, </span>
-<span id="cb2-56"><a href="#cb2-56" tabindex="-1"></a>            <span class="at">target =</span> <span class="st">&quot;al2&quot;</span>,</span>
-<span id="cb2-57"><a href="#cb2-57" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;the third administrative level of the GADM gazetteer&quot;</span>, </span>
-<span id="cb2-58"><a href="#cb2-58" tabindex="-1"></a>            <span class="at">ontology =</span> .) <span class="sc">%&gt;%</span></span>
-<span id="cb2-59"><a href="#cb2-59" tabindex="-1"></a>  <span class="fu">new_class</span>(<span class="at">new =</span> <span class="st">&quot;nation&quot;</span>, </span>
-<span id="cb2-60"><a href="#cb2-60" tabindex="-1"></a>            <span class="at">target =</span> <span class="st">&quot;un_region&quot;</span>,</span>
-<span id="cb2-61"><a href="#cb2-61" tabindex="-1"></a>            <span class="at">description =</span> <span class="st">&quot;groups of geometries that together form a nation (for example &#39;France&#39;, </span></span>
-<span id="cb2-62"><a href="#cb2-62" tabindex="-1"></a><span class="st">                           which is a combination of many territorial concepts across the whole </span></span>
-<span id="cb2-63"><a href="#cb2-63" tabindex="-1"></a><span class="st">                           globe), but which is different than &#39;al1&#39; of GADM&quot;</span>, </span>
-<span id="cb2-64"><a href="#cb2-64" tabindex="-1"></a>            <span class="at">ontology =</span> .)                                       <span class="co"># for convenience, one can pipe the </span></span>
-<span id="cb2-65"><a href="#cb2-65" tabindex="-1"></a>                                                                <span class="co"># output of a previous function into </span></span>
-<span id="cb2-66"><a href="#cb2-66" tabindex="-1"></a>                                                                <span class="co"># the next. </span></span>
-<span id="cb2-67"><a href="#cb2-67" tabindex="-1"></a></span>
-<span id="cb2-68"><a href="#cb2-68" tabindex="-1"></a><span class="co"># Finally, the new concepts can be added, they need to associated to one of the classes in the ontology</span></span>
-<span id="cb2-69"><a href="#cb2-69" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> </span>
-<span id="cb2-70"><a href="#cb2-70" tabindex="-1"></a>  <span class="fu">new_concept</span>(<span class="at">new =</span> un_region,</span>
-<span id="cb2-71"><a href="#cb2-71" tabindex="-1"></a>              <span class="at">class =</span> <span class="st">&quot;un_region&quot;</span>,</span>
-<span id="cb2-72"><a href="#cb2-72" tabindex="-1"></a>              <span class="at">ontology =</span>  gazetteer)</span>
-<span id="cb2-73"><a href="#cb2-73" tabindex="-1"></a></span>
-<span id="cb2-74"><a href="#cb2-74" tabindex="-1"></a><span class="co"># when adding concepts that are nested in other concepts, we need to provide the full concept in </span></span>
-<span id="cb2-75"><a href="#cb2-75" tabindex="-1"></a><span class="co"># &#39;broader = &#39;. We can get this with the &#39;get_concept()&#39; function.</span></span>
-<span id="cb2-76"><a href="#cb2-76" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> </span>
-<span id="cb2-77"><a href="#cb2-77" tabindex="-1"></a>  <span class="fu">new_concept</span>(<span class="at">new =</span> un_subregion<span class="sc">$</span>concept,</span>
-<span id="cb2-78"><a href="#cb2-78" tabindex="-1"></a>              <span class="at">broader =</span> <span class="fu">get_concept</span>(<span class="at">table =</span> un_subregion <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">label =</span> broader), </span>
-<span id="cb2-79"><a href="#cb2-79" tabindex="-1"></a>                                    <span class="at">ontology =</span> gazetteer),</span>
-<span id="cb2-80"><a href="#cb2-80" tabindex="-1"></a>              <span class="at">class =</span> <span class="st">&quot;un_subregion&quot;</span>,</span>
-<span id="cb2-81"><a href="#cb2-81" tabindex="-1"></a>              <span class="at">ontology =</span>  gazetteer)</span>
-<span id="cb2-82"><a href="#cb2-82" tabindex="-1"></a>              </span>
-<span id="cb2-83"><a href="#cb2-83" tabindex="-1"></a><span class="fu">write_rds</span>(<span class="at">x =</span> gazetteer, <span class="at">file =</span> gazDir)</span></code></pre></div>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a><span class="co"># ... then we define the ontology-specific classes used for recording items of the geoscheme. </span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co"># Here we define the three classes &#39;un_region&#39;, &#39;un_subregion&#39; and &#39;nation&#39;.</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> <span class="fu">new_class</span>(</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>    <span class="at">new =</span> <span class="st">&quot;un_region&quot;</span>, </span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>    <span class="at">target =</span> <span class="cn">NA</span>,</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>    <span class="at">description =</span> <span class="st">&quot;region according to the UN geoscheme&quot;</span>, </span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>    <span class="at">ontology =</span> gazetteer</span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a>) <span class="sc">%&gt;%</span> <span class="fu">new_class</span>(</span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>    <span class="at">new =</span> <span class="st">&quot;un_subregion&quot;</span>, </span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>    <span class="at">target =</span> <span class="st">&quot;un_region&quot;</span>,                               <span class="co"># un_subregion is nested into un_region</span></span>
+<span id="cb2-35"><a href="#cb2-35" tabindex="-1"></a>    <span class="at">description =</span> <span class="st">&quot;sub-region according to the UN geoscheme&quot;</span>, </span>
+<span id="cb2-36"><a href="#cb2-36" tabindex="-1"></a>    <span class="at">ontology =</span> .</span>
+<span id="cb2-37"><a href="#cb2-37" tabindex="-1"></a>) <span class="sc">%&gt;%</span> <span class="fu">new_class</span>(</span>
+<span id="cb2-38"><a href="#cb2-38" tabindex="-1"></a>    <span class="at">new =</span> <span class="st">&quot;nation&quot;</span>, </span>
+<span id="cb2-39"><a href="#cb2-39" tabindex="-1"></a>    <span class="at">target =</span> <span class="st">&quot;un_region&quot;</span>,</span>
+<span id="cb2-40"><a href="#cb2-40" tabindex="-1"></a>    <span class="at">description =</span> <span class="st">&quot;groups of geometries that together form a nation&quot;</span>, </span>
+<span id="cb2-41"><a href="#cb2-41" tabindex="-1"></a>    <span class="at">ontology =</span> .)</span>
+<span id="cb2-42"><a href="#cb2-42" tabindex="-1"></a></span>
+<span id="cb2-43"><a href="#cb2-43" tabindex="-1"></a><span class="co"># Finally, the new concepts can be added, they need to associated to a classes we just defined</span></span>
+<span id="cb2-44"><a href="#cb2-44" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> <span class="fu">new_concept</span>(</span>
+<span id="cb2-45"><a href="#cb2-45" tabindex="-1"></a>    <span class="at">new =</span> un_region,</span>
+<span id="cb2-46"><a href="#cb2-46" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">&quot;un_region&quot;</span>,</span>
+<span id="cb2-47"><a href="#cb2-47" tabindex="-1"></a>    <span class="at">ontology =</span>  gazetteer)</span>
+<span id="cb2-48"><a href="#cb2-48" tabindex="-1"></a></span>
+<span id="cb2-49"><a href="#cb2-49" tabindex="-1"></a><span class="co"># when adding concepts that are nested in other concepts, we need to provide the full concept in </span></span>
+<span id="cb2-50"><a href="#cb2-50" tabindex="-1"></a><span class="co"># &#39;broader = &#39;. We can get this with the &#39;get_concept()&#39; function.</span></span>
+<span id="cb2-51"><a href="#cb2-51" tabindex="-1"></a>gazetteer <span class="ot">&lt;-</span> <span class="fu">new_concept</span>(</span>
+<span id="cb2-52"><a href="#cb2-52" tabindex="-1"></a>    <span class="at">new =</span> un_subregion<span class="sc">$</span>concept,</span>
+<span id="cb2-53"><a href="#cb2-53" tabindex="-1"></a>    <span class="at">broader =</span> <span class="fu">get_concept</span>(<span class="at">table =</span> un_subregion <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="at">label =</span> broader), </span>
+<span id="cb2-54"><a href="#cb2-54" tabindex="-1"></a>                          <span class="at">ontology =</span> gazetteer),</span>
+<span id="cb2-55"><a href="#cb2-55" tabindex="-1"></a>    <span class="at">class =</span> <span class="st">&quot;un_subregion&quot;</span>,</span>
+<span id="cb2-56"><a href="#cb2-56" tabindex="-1"></a>    <span class="at">ontology =</span>  gazetteer)</span>
+<span id="cb2-57"><a href="#cb2-57" tabindex="-1"></a>              </span>
+<span id="cb2-58"><a href="#cb2-58" tabindex="-1"></a><span class="fu">write_rds</span>(<span class="at">x =</span> gazetteer, <span class="at">file =</span> gazDir)</span></code></pre></div>
 </div>
 <div id="thematic-data" class="section level2" number="2.3">
 <h2><span class="header-section-number">2.3</span> Thematic data</h2>
-<p>Essentially all data can be the thematic data of a database. For an areal database these are, however, typically data that are some attribute of the region or territory they are associated to or metrics that describe a population, inventory or other set of entities within an area. Thematic data come in all forms and shapes and standardization is often rather poor. This is largely due to the fact that there are no clear rules on how to set up tables, and most tools that are typically used for recording and storing data provide them in vastly different data-structures. To reshape data into a common format, <code>arealDB</code> makes use of schema-descriptions as they are built with the <code>tabshiftr</code> R-package (more on this below).</p>
+<p>As mentioned above, any data can be the thematic data of a areal database. For an areal database these are, however, typically data that are some attribute of the region or territory they are associated to or metrics that describe a population, inventory or other set of entities within an area. Thematic data come in all forms and shapes and standardization is often rather poor. This is largely due to the fact that there are no clear and commonly agreed-upon rules on how to set up tables, and most tools that are typically used for recording and storing data do this in vastly different data-structures. To reshape data into a common format, <code>arealDB</code> makes use of schema-descriptions that are built with the <code>tabshiftr</code> R-package (more on this below).</p>
 </div>
 <div id="spatial-data" class="section level2" number="2.4">
 <h2><span class="header-section-number">2.4</span> Spatial data</h2>
-<p>Any areal database connects the thematic data to some set of spatial data (they are called <em>geometries</em> here). Spatial data are typically already quite well standardized so that we only need to record how exactly the data are structured. Spatial data are primarily the geometries themselves, but most of the time they also come with an ID that identifies each geometry and a set of attributes associated to each geometry. For spatial data that are supposed to be useful for more than being visualized there should be a name of the territorial units or meta-data that allow identification of those names.</p>
+<p>Any areal database connects the thematic data to some set of spatial data (they are called <em>geometries</em> here). Spatial data are typically already quite well standardized so that we only need to record how exactly the data are structured. Spatial data are primarily the geometries themselves, but most of the time they also come with an ID that identifies each geometry and a set of ancillary attributes to each geometry. For spatial data that are supposed to be useful for more than being visualized there should be a name of the territorial units or meta-data that allow identification of those names.</p>
 </div>
 </div>
 <div id="working-with-arealdb" class="section level1" number="3">
 <h1><span class="header-section-number">3</span> Working with <code>arealDB</code></h1>
-<div id="start-the-database" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Start the database</h2>
-<p>To build a new database with <code>arealDB</code>, one has to start with the <code>start_arealDB()</code> function. Also when resuming to work with that database, it is required to run this function again, as it pastes the current root directory into the options of R, based on which paths for files are derived. The argument <code>gazetteer =</code> is mandatory because without the information recorded in a gazetteer it would not be possible to determine the spatial/topological relation between geometries. The argument <code>top =</code> takes that class in the ontology that shall be regarded as the top-most class at which territorial units are distinguished (this might be different to the top-most level in the ontology). It is, however, optional to provide an ontology. In case the thematic data do already contain well harmonized value terms, this can be omitted.</p>
+<div id="start-the-database-stage-1" class="section level2" number="3.1">
+<h2><span class="header-section-number">3.1</span> Start the database (stage 1)</h2>
+<p>To build a new database with <code>arealDB</code>, one has to start with the <code>start_arealDB()</code> function. Also when resuming to work with that database, it is required to run this function again, as it pastes the current root directory into the options of R, based on which paths for files are derived. The argument <code>gazetteer =</code> is mandatory because without the information recorded in a gazetteer it would not be possible to determine the spatial/topological relation between geometries. The argument <code>top =</code> takes that class in the ontology that shall be regarded as the top-most class at which territorial units are distinguished (this might be different to the top-most level in the gazetteer). It is, however, optional to provide an ontology. In case the thematic data do already contain well harmonized value terms, this can be omitted.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">start_arealDB</span>(<span class="at">root =</span> DBDir,</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>              <span class="at">gazetteer =</span> gazDir, <span class="at">top =</span> <span class="st">&quot;al1&quot;</span>,</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>              <span class="at">ontology =</span> <span class="fu">list</span>(<span class="st">&quot;targetVar&quot;</span> <span class="ot">=</span> ontoDir))</span></code></pre></div>
-<p>As there is sometimes more than one target variable recorded in an areal database, it is possible to provide more than one ontology. When providing the link between target variable and an ontology, it is important that the name of the target variable is a column in the (harmonized) thematic data. In the above example, <code>targetVar</code> would have to be the column in any of the thematic data tables that are stored in the database.</p>
+<p>As there is sometimes more than one target variable recorded in an areal database, it is possible to provide more than one ontology. When providing the link between target variable and an ontology, it is important that the name of the target variable is a column in the (harmonized) thematic data. In the above example, <code>&quot;targetVar&quot;</code> would have to be the column in any of the thematic data tables that are stored in the database.</p>
+<p>Additionally to starting the database, it is part of stage 1 to identify all thematic and geometric data and storing them in the respective folders in <code>DBDir/adb_tables/</code> and <code>DBDir/adb_geometries/</code>.</p>
 </div>
-<div id="register-the-data" class="section level2" number="3.2">
-<h2><span class="header-section-number">3.2</span> Register the data</h2>
-<p>In this example we are working with three dataseries, GADM (the Database of global administrative areas), IBGE (the Brazilian Statistical and Geographic agency) and USDA (the United States Department of Agriculture). The first step in any areal database is in registering the dataseries that are relevant. Thematic and spatial data are primarily described by the meta-data that are represented by the dataseries. It shall be noted here that any function in <code>arealDB</code> that would modify the database contains the argument <code>update =</code>, to indicate that the modifications that would follow from calling this function are intended to be stored in the database. If this is left at <code>FALSE</code> (the default), the function would merely return the entries that would be stored in the database, which can be used for debugging purposes</p>
+<div id="register-the-data-stage-2" class="section level2" number="3.2">
+<h2><span class="header-section-number">3.2</span> Register the data (stage 2)</h2>
+<p>In this example we are working with three dataseries, GADM (the Database of global administrative areas), IBGE (the Brazilian Statistical and Geographic agency) and USDA (the United States Department of Agriculture). The second step in any areal database is in registering the dataseries that are relevant. Thematic and spatial data are primarily described by the meta-data that are represented by the dataseries.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">regDataseries</span>(<span class="at">name =</span> <span class="st">&quot;gadm&quot;</span>,</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>              <span class="at">description =</span> <span class="st">&quot;Database of Global Administrative Areas&quot;</span>,</span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>              <span class="at">homepage =</span> <span class="st">&quot;https://gadm.org/index.html&quot;</span>,</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>              <span class="at">licence_link =</span> <span class="st">&quot;https://gadm.org/license.html&quot;</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">regDataseries</span>(<span class="at">name =</span> <span class="st">&quot;ibge&quot;</span>,</span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>              <span class="at">description =</span> <span class="st">&quot;Instituto Brasileiro de Geografia e Estatistica&quot;</span>,</span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>              <span class="at">homepage =</span> <span class="st">&quot;https://sidra.ibge.gov.br&quot;</span>,</span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="fu">regDataseries</span>(<span class="at">name =</span> <span class="st">&quot;usda&quot;</span>,</span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>              <span class="at">description =</span> <span class="st">&quot;US Dept. of Agriculture&quot;</span>,</span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>              <span class="at">homepage =</span> <span class="st">&quot;https://www.nass.usda.gov/Quick_Stats/Lite&quot;</span>,</span>
-<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a></span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="co"># to debug whether all meta-data have been provided properly and/or the function works as expected</span></span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>debug <span class="ot">&lt;-</span> <span class="fu">regDataseries</span>(..., <span class="at">update =</span> <span class="cn">FALSE</span>)</span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="fu">View</span>(debug)</span></code></pre></div>
-<p>Next, the geometries are registered. Here, we need to provide the dataseries for geometries in <code>gSeries =</code> and various other meta-data. If the geometries are valid for only a particular territorial unit, this can be specified with a dynamic <code>name = value</code> combination. <code>name</code> must, in this case, be a class in the gazetteer (such as <em>nation</em> in our gazetteer). In case the geometries contain several territorial units that shall be handled separately, the territory names are taken from what has been defined as <code>top =</code> in <code>start_arealDB()</code>. Relations between the columns/attributes in the geometry and the gezatteer are defined in the argument <code>label =</code>, where a list that links them is provided.</p>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>              <span class="at">version =</span> <span class="st">&quot;3.6&quot;</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>              <span class="at">licence_link =</span> <span class="st">&quot;https://gadm.org/license.html&quot;</span>,</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">regDataseries</span>(<span class="at">name =</span> <span class="st">&quot;ibge&quot;</span>,</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>              <span class="at">description =</span> <span class="st">&quot;Instituto Brasileiro de Geografia e Estatistica&quot;</span>,</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>              <span class="at">version =</span> <span class="st">&quot;2023.12&quot;</span>,                                 </span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>              <span class="at">homepage =</span> <span class="st">&quot;https://sidra.ibge.gov.br&quot;</span>,</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># in case no version is available, use the last date you checked the source</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="fu">regDataseries</span>(<span class="at">name =</span> <span class="st">&quot;usda&quot;</span>,</span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>              <span class="at">description =</span> <span class="st">&quot;US Dept. of Agriculture&quot;</span>,</span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>              <span class="at">version =</span> <span class="st">&quot;2023.12&quot;</span>,</span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>              <span class="at">homepage =</span> <span class="st">&quot;https://www.nass.usda.gov/Quick_Stats/Lite&quot;</span>,</span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>              <span class="at">update =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p>Next, the geometries are registered. Here, we need to provide the dataseries for geometries in <code>gSeries =</code> and various other meta-data. If the geometries are valid for only a particular territorial unit, this can be specified with a dynamic <code>name = value</code> combination. <code>name</code> must, in this case, be a class in the gazetteer (such as <em>nation</em> in our gazetteer). In case the geometries contain several territorial units that shall be handled separately, the territory names are taken from what has been defined as <code>top =</code> in <code>start_arealDB()</code>. Relations between the columns/attributes in the geometry and the gazetteer are defined in the argument <code>label =</code>, where a list that links them is provided.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># Often it makes sense to start with a global set of geometries, especially if databases encompas</span></span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># several nations</span></span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,</span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al1 =</span> <span class="st">&quot;NAME_0&quot;</span>),</span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;gadm36_levels_gpkg.zip|gadm36_levels.gpkg&quot;</span>,</span>
 <span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://biogeo.ucdavis.edu/data/gadm3.6/gadm36_levels_gpkg.zip&quot;</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>            <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al1 =</span> <span class="st">&quot;NAME_0&quot;</span>, <span class="at">al2 =</span> <span class="st">&quot;NAME_1&quot;</span>),</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;gadm36_levels_gpkg.zip|gadm36_levels.gpkg&quot;</span>,</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://biogeo.ucdavis.edu/data/gadm3.6/gadm36_levels_gpkg.zip&quot;</span>,</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>,</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>            <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a></span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,</span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al1 =</span> <span class="st">&quot;NAME_0&quot;</span>, <span class="at">al2 =</span> <span class="st">&quot;NAME_1&quot;</span>, <span class="at">al3 =</span> <span class="st">&quot;NAME_2&quot;</span>),</span>
-<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;gadm36_levels_gpkg.zip|gadm36_levels.gpkg&quot;</span>,</span>
-<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://biogeo.ucdavis.edu/data/gadm3.6/gadm36_levels_gpkg.zip&quot;</span>,</span>
-<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>,</span>
-<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>            <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a></span>
-<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="co"># For Brazil, there are dedicated geometries available, not so for the US</span></span>
-<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">nation =</span> <span class="st">&quot;Brazil&quot;</span>,</span>
-<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>            <span class="at">gSeries =</span> <span class="st">&quot;ibge&quot;</span>,</span>
-<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al2 =</span> <span class="st">&quot;NM_ESTADO&quot;</span>),</span>
-<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;BR.zip|BRUFE250GC_SIR.shp&quot;</span>,</span>
-<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://mapas.ibge.gov.br/bases-e-referenciais/bases-cartograficas/malhas-digitais&quot;</span>,</span>
-<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;notPlanned&quot;</span>,</span>
-<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a>            <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a></span>
-<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">nation =</span> <span class="st">&quot;Brazil&quot;</span>,</span>
-<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a>            <span class="at">gSeries =</span> <span class="st">&quot;ibge&quot;</span>,</span>
-<span id="cb5-35"><a href="#cb5-35" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al3 =</span> <span class="st">&quot;NM_MUNICIP&quot;</span>),</span>
-<span id="cb5-36"><a href="#cb5-36" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;BR.zip|BRMUE250GC_SIR.shp&quot;</span>,</span>
-<span id="cb5-37"><a href="#cb5-37" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://mapas.ibge.gov.br/bases-e-referenciais/bases-cartograficas/malhas-digitais&quot;</span>,</span>
-<span id="cb5-38"><a href="#cb5-38" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;notPlanned&quot;</span>,</span>
-<span id="cb5-39"><a href="#cb5-39" tabindex="-1"></a>            <span class="at">update =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al1 =</span> <span class="st">&quot;NAME_0&quot;</span>, <span class="at">al2 =</span> <span class="st">&quot;NAME_1&quot;</span>),</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;gadm36_levels_gpkg.zip|gadm36_levels.gpkg&quot;</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://biogeo.ucdavis.edu/data/gadm3.6/gadm36_levels_gpkg.zip&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al1 =</span> <span class="st">&quot;NAME_0&quot;</span>, <span class="at">al2 =</span> <span class="st">&quot;NAME_1&quot;</span>, <span class="at">al3 =</span> <span class="st">&quot;NAME_2&quot;</span>),</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;gadm36_levels_gpkg.zip|gadm36_levels.gpkg&quot;</span>,</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://biogeo.ucdavis.edu/data/gadm3.6/gadm36_levels_gpkg.zip&quot;</span>,</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;unknown&quot;</span>)</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a><span class="co"># For Brazil, there are dedicated geometries available, not so for the US</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">nation =</span> <span class="st">&quot;Brazil&quot;</span>,</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>            <span class="at">gSeries =</span> <span class="st">&quot;ibge&quot;</span>,</span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al2 =</span> <span class="st">&quot;NM_ESTADO&quot;</span>),</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;BR.zip|BRUFE250GC_SIR.shp&quot;</span>,</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://mapas.ibge.gov.br/bases-e-referenciais/bases-cartograficas/malhas-digitais&quot;</span>,</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;notPlanned&quot;</span>)</span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a><span class="fu">regGeometry</span>(<span class="at">nation =</span> <span class="st">&quot;Brazil&quot;</span>,</span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a>            <span class="at">gSeries =</span> <span class="st">&quot;ibge&quot;</span>,</span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a>            <span class="at">label =</span> <span class="fu">list</span>(<span class="at">al3 =</span> <span class="st">&quot;NM_MUNICIP&quot;</span>),</span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a>            <span class="at">archive =</span> <span class="st">&quot;BR.zip|BRMUE250GC_SIR.shp&quot;</span>,</span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a>            <span class="at">archiveLink =</span> <span class="st">&quot;https://mapas.ibge.gov.br/bases-e-referenciais/bases-cartograficas/malhas-digitais&quot;</span>,</span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a>            <span class="at">updateFrequency =</span> <span class="st">&quot;notPlanned&quot;</span>)</span></code></pre></div>
 <p>Finally, the thematic data are registered. Here, we first need to define the schema description. To learn more about this, consult the documentation of the <a href="https://github.com/luckinet/tabshiftr"><code>tabshiftr</code></a> R-package. In addition to the <code>gSeries =</code>, thematic data also have a <code>dSeries =</code>, which documents the thematic dataseries that can deviate from the geometry dataseries. In case several tables are available for one dataseries, the argument <code>subset =</code> can be used to specify dynamically what is reported in the respective table. As no two tables can have the same name at stage2 (the result of registering the data), this argument also serves the purpose to give the tables different names.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>schema_ibge <span class="ot">&lt;-</span> </span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="fu">setCluster</span>(<span class="at">id =</span> <span class="st">&quot;year&quot;</span>, <span class="at">left =</span> <span class="dv">1</span>, <span class="at">top =</span> <span class="dv">3</span>, <span class="at">height =</span> <span class="dv">400536</span>) <span class="sc">%&gt;%</span></span>
@@ -1783,56 +1754,50 @@ border-radius: 0px;
 <span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>         <span class="at">nextUpdate =</span> <span class="st">&quot;unknown&quot;</span>,</span>
 <span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>         <span class="at">updateFrequency =</span> <span class="st">&quot;annually&quot;</span>,</span>
 <span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a>         <span class="at">metadataLink =</span> <span class="st">&quot;https://metadados.ibge.gov.br/consulta/estatisticos/operacoes-estatisticas/PA&quot;</span>,</span>
-<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>         <span class="at">metadataPath =</span> <span class="st">&quot;unavailable&quot;</span>,</span>
-<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>         <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>         </span>
-<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>schema_usda <span class="ot">&lt;-</span> </span>
-<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>  <span class="fu">setFormat</span>(<span class="at">na_values =</span> <span class="st">&quot;(D)&quot;</span>, <span class="at">thousand =</span> <span class="st">&quot;,&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;al2&quot;</span>, <span class="at">columns =</span> <span class="dv">18</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;al3&quot;</span>, <span class="at">columns =</span> <span class="dv">23</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;year&quot;</span>, <span class="at">columns =</span> <span class="dv">32</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;commodities&quot;</span>, <span class="at">columns =</span> <span class="dv">5</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;planted&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;ha&quot;</span>, <span class="at">factor =</span> <span class="fl">0.4046856422</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
-<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;AREA PLANTED&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;harvested&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;ha&quot;</span>, <span class="at">factor =</span> <span class="fl">0.4046856422</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
-<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;AREA HARVESTED&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;production&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;t&quot;</span>, <span class="at">factor =</span> <span class="fl">0.907185</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
-<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;PRODUCTION&quot;</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;yield&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;kg/ha&quot;</span>, <span class="at">factor =</span> <span class="fl">2241.7</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
-<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;YIELD&quot;</span>)</span>
-<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a></span>
-<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a><span class="fu">regTable</span>(<span class="at">nation =</span> <span class="st">&quot;UnitedStatesOfAmerica&quot;</span>,</span>
-<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a>         <span class="at">level =</span> <span class="dv">3</span>,</span>
-<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a>         <span class="at">subset =</span> <span class="st">&quot;surveyFieldCrops&quot;</span>,</span>
-<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a>         <span class="at">dSeries =</span> <span class="st">&quot;usda&quot;</span>,</span>
-<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a>         <span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,                                   <span class="co"># here, dSeries and gSeries deviate</span></span>
-<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a>         <span class="at">schema =</span> schema_usda,</span>
-<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a>         <span class="at">begin =</span> <span class="dv">1918</span>,</span>
-<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a>         <span class="at">end =</span> <span class="dv">2018</span>,</span>
-<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a>         <span class="at">archive =</span> <span class="st">&quot;qs.crops_20220129.txt.gz|usda_tons_crops_l3.csv&quot;</span>,</span>
-<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a>         <span class="at">archiveLink =</span> <span class="st">&quot;https://quickstats.nass.usda.gov/&quot;</span>,</span>
-<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a>         <span class="at">updateFrequency =</span> <span class="st">&quot;annually&quot;</span>,</span>
-<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a>         <span class="at">nextUpdate =</span> <span class="st">&quot;unknown&quot;</span>,</span>
-<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a>         <span class="at">metadataLink =</span> <span class="st">&quot;https://www.nass.usda.gov/Quick_Stats/index.php&quot;</span>,</span>
-<span id="cb6-56"><a href="#cb6-56" tabindex="-1"></a>         <span class="at">metadataPath =</span> <span class="st">&quot;unknown&quot;</span>,</span>
-<span id="cb6-57"><a href="#cb6-57" tabindex="-1"></a>         <span class="at">update =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>         <span class="at">metadataPath =</span> <span class="st">&quot;unavailable&quot;</span>)</span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>         </span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>schema_usda <span class="ot">&lt;-</span> </span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>  <span class="fu">setFormat</span>(<span class="at">na_values =</span> <span class="st">&quot;(D)&quot;</span>, <span class="at">thousand =</span> <span class="st">&quot;,&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;al2&quot;</span>, <span class="at">columns =</span> <span class="dv">18</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;al3&quot;</span>, <span class="at">columns =</span> <span class="dv">23</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;year&quot;</span>, <span class="at">columns =</span> <span class="dv">32</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a>  <span class="fu">setIDVar</span>(<span class="at">name =</span> <span class="st">&quot;commodities&quot;</span>, <span class="at">columns =</span> <span class="dv">5</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;planted&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;ha&quot;</span>, <span class="at">factor =</span> <span class="fl">0.4046856422</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;AREA PLANTED&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;harvested&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;ha&quot;</span>, <span class="at">factor =</span> <span class="fl">0.4046856422</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;AREA HARVESTED&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;production&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;t&quot;</span>, <span class="at">factor =</span> <span class="fl">0.907185</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;PRODUCTION&quot;</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a>  <span class="fu">setObsVar</span>(<span class="at">name =</span> <span class="st">&quot;yield&quot;</span>, <span class="at">unit =</span> <span class="st">&quot;kg/ha&quot;</span>, <span class="at">factor =</span> <span class="fl">2241.7</span>, <span class="at">columns =</span> <span class="dv">39</span>,</span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a>            <span class="at">key =</span> <span class="dv">9</span>, <span class="at">value =</span> <span class="st">&quot;YIELD&quot;</span>)</span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a></span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a><span class="fu">regTable</span>(<span class="at">nation =</span> <span class="st">&quot;UnitedStatesOfAmerica&quot;</span>,</span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a>         <span class="at">level =</span> <span class="dv">3</span>,</span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a>         <span class="at">subset =</span> <span class="st">&quot;surveyFieldCrops&quot;</span>,</span>
+<span id="cb6-45"><a href="#cb6-45" tabindex="-1"></a>         <span class="at">dSeries =</span> <span class="st">&quot;usda&quot;</span>,</span>
+<span id="cb6-46"><a href="#cb6-46" tabindex="-1"></a>         <span class="at">gSeries =</span> <span class="st">&quot;gadm&quot;</span>,                                   <span class="co"># here, dSeries and gSeries deviate</span></span>
+<span id="cb6-47"><a href="#cb6-47" tabindex="-1"></a>         <span class="at">schema =</span> schema_usda,</span>
+<span id="cb6-48"><a href="#cb6-48" tabindex="-1"></a>         <span class="at">begin =</span> <span class="dv">1918</span>,</span>
+<span id="cb6-49"><a href="#cb6-49" tabindex="-1"></a>         <span class="at">end =</span> <span class="dv">2018</span>,</span>
+<span id="cb6-50"><a href="#cb6-50" tabindex="-1"></a>         <span class="at">archive =</span> <span class="st">&quot;qs.crops_20220129.txt.gz|usda_tons_crops_l3.csv&quot;</span>,</span>
+<span id="cb6-51"><a href="#cb6-51" tabindex="-1"></a>         <span class="at">archiveLink =</span> <span class="st">&quot;https://quickstats.nass.usda.gov/&quot;</span>,</span>
+<span id="cb6-52"><a href="#cb6-52" tabindex="-1"></a>         <span class="at">updateFrequency =</span> <span class="st">&quot;annually&quot;</span>,</span>
+<span id="cb6-53"><a href="#cb6-53" tabindex="-1"></a>         <span class="at">nextUpdate =</span> <span class="st">&quot;unknown&quot;</span>,</span>
+<span id="cb6-54"><a href="#cb6-54" tabindex="-1"></a>         <span class="at">metadataLink =</span> <span class="st">&quot;https://www.nass.usda.gov/Quick_Stats/index.php&quot;</span>,</span>
+<span id="cb6-55"><a href="#cb6-55" tabindex="-1"></a>         <span class="at">metadataPath =</span> <span class="st">&quot;unknown&quot;</span>)</span></code></pre></div>
 </div>
-<div id="normalise-the-input" class="section level2" number="3.3">
-<h2><span class="header-section-number">3.3</span> Normalise the input</h2>
-<p>Finally, we need to align all data so that they follow the same structure. This is called “normalization”, in <code>arealDB</code>, we normalize the registered data. This happens when calling the functions <code>nromGeometry()</code> and <code>normTable()</code>, for the respective input data. Geometries are normalized first, because the thematic data are associated to the standardized versions of them.</p>
-<p>This process of normalization has been designed so that a user has to interact with the function as little as possible, but some interactions are still required. Especially when working with the names of territories, it is not always completely clear how one standard translates into another. The gazetteer is the place where this is documented, but it can only infer the information only to a certain degree. Essentially, when needs to be known for a consistent gazetteer is which concept translates into which other concept. However, with the occasional changes of administrative units, sometimes concepts change to a degree that they can’t simply be translated into one-another. This is the case for example when on previous administrative unit is split up into several new units. None of the new units are identical to the previous units, but some of them may still have the same name. In this sense, <em>“translation”</em> isn’t equivalent to the literal meaning most people know, but must be more understood as “what maps how to what else”. When normalizing geometries with the argument <code>priority = &quot;ontology&quot;</code>, the function will take names as literal interpretations, match those that are “the same” and ask the user to translate the ones that don’t match manually. With <code>priority = &quot;spatial&quot;</code>, the function instead determine spatial overlap to determine which concepts are nested into which other concepts to update the ontology accordingly. This requires less human interaction, but more computation time.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">normGeometry</span>(<span class="at">pattern =</span> <span class="st">&quot;brazil&quot;</span>,</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>             <span class="at">outType =</span> <span class="st">&quot;gpkg&quot;</span>, </span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>             <span class="at">update =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>             </span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="fu">normGeometry</span>(<span class="at">pattern =</span> <span class="st">&quot;UnitedStatesOfAmerica&quot;</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>             <span class="at">outType =</span> <span class="st">&quot;gpkg&quot;</span>, </span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>             <span class="at">priority =</span> <span class="st">&quot;spatial&quot;</span>,</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>             <span class="at">update =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<div id="normalise-the-input-stage-3" class="section level2" number="3.3">
+<h2><span class="header-section-number">3.3</span> Normalise the input (stage 3)</h2>
+<p>Finally, we need to align all data so that they follow the same structure. This is called <em>normalization</em>,in <code>arealDB</code>, and is carried out with the functions <code>normGeometry()</code> and <code>normTable()</code>, for the respective input data. Geometries are normalized first, because the thematic data are associated to the standardized versions of them.</p>
+<p>This process of normalization has been designed so that a user has to interact with the function as little as possible, but some interactions are still required. Especially when working with the names of territories, it is not always completely clear how the names of one dataset translate to names of another dataset. However, in the current version or <code>arealDB</code> this has been simplified further. Via a spatial match, new geometries are intersected with the already harmonised basis and based on the topological relationships (whether a new geometry matches well, is larger or is smaller), the matches are denoted with <code>close</code>, <code>narrower</code> or <code>broader</code> labels and the respective overlap with the harmonised basis. Names and IDs are then either derived (when an overlap is sufficiently large) or the original names are inserted into the gazetteer.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">normGeometry</span>(<span class="at">pattern =</span> <span class="st">&quot;Brazil&quot;</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>             <span class="at">outType =</span> <span class="st">&quot;gpkg&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>             </span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">normGeometry</span>(<span class="at">pattern =</span> <span class="st">&quot;UnitedStatesOfAmerica&quot;</span>,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>             <span class="at">outType =</span> <span class="st">&quot;gpkg&quot;</span>)</span></code></pre></div>
 <p>When finally normalizing the thematic tables, interaction is required when the <code>ontoMatch =</code> argument has been provided, otherwise no matching of terms of the target variables with the ontology is carried out. Also here, hierarchical relationships can be included by providing the target variable terms in the respective columns in the translation table (that opens automatically when required), or simple 1:1 translations or terms from other taxonomies or languages can be specified.</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">normTable</span>(<span class="at">ontoMatch =</span> <span class="st">&quot;targetVar&quot;</span>,</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>          <span class="at">outType =</span> <span class="st">&quot;rds&quot;</span>,</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>          <span class="at">update =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>          <span class="at">outType =</span> <span class="st">&quot;rds&quot;</span>)</span></code></pre></div>
 </div>
 </div>
 

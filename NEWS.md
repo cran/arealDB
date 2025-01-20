@@ -1,3 +1,48 @@
+# arealDB 0.9.4
+
+- fix example data so that github actions run properly.
+- fix documentation to markdown standard.
+- refine function `adb_querry()`.
+
+# arealDB 0.9.3
+
+- smaller fixes
+
+# arealDB 0.9.2
+
+- various fixes to the internal processing of matching tabular to geometric data.
+- various fixes to finding matches between harmonized and external geometries.
+
+# arealDB 0.9.0 - frontend update
+
+- new functions `adb_archive()`, `adb_backup()`, `adb_inventory()`, `adb_metadata()`, `adb_ontology()`, `adb_reset()`, `adb_restore()`, `adb_schemas()` and `adb_translations()` to access the respective part of an areal database.
+- renamed functions `makeExmapleDB()` to `adb_example()` and `start_arealDB()` to `adb_init()`
+- some fixes to the backend as well, where now *.csv tables are not used any more, but information are stored in *.rds files, as they are not meant to be interacted with. This is now done via the `adb_*()` functions, which ensure that nothing is modified to a degree that it breaks
+- incl. a new feature, where a table that has a missing target column is fixed by matching the child items and then selecting the parent from that as the missing target column
+- move the function `edit_matches()`, that was so far located in the `ontologics` package to here, as it is primarily used in `arealDB` and not really a usecase for `ontologics`
+
+# arealDB 0.8.1
+
+- re-enable matching with the ontology when normalising a table, by default
+
+# arealDB 0.8.0 - better gazetteer matching
+
+- introduction of the function `updateOntology()`. This updates the gazetteer after a full spatial match has been carried out, drastically taking complexity out of the functions and guaranteeing proper match between the spatial files and the gazetteer
+
+# arealDB 0.7.1 
+
+- entirely remove matching via gazetteer for any level below the first level that serves for identifying unique territories (which resulted in a vast simplification of the `normGeometry()` function).
+- include a `version = ` for data series.
+- include `query = ` argument also for tables.
+
+# arealDB 0.7.0 - streamlined geometry matching
+
+- this include various smaller fixes that should enable a more user-friendly and functional way of specifying geometries and running the normalisation process.
+
+# arealDB 0.6.4
+
+- adapt storing of stage1 files so that they are now aggregated into folders with their data series as name.
+
 # arealDB 0.6.3
 
 - fixing an example in `start_arealBD()` so that a gazetteer is not saved in the home-directory of linux users.
